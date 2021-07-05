@@ -1,0 +1,1231 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BeagleV测试</title>
+  <link rel="stylesheet" href="https://stackedit.io/style.css" />
+</head>
+
+<body class="stackedit">
+  <div class="stackedit__html"><p></p><div class="toc"><h3>BeagleV测试</h3><ul><li><a href="#_1">一、测试环境</a></li><li><a href="#_11">二、测试概述</a></li><li><a href="#_43">三、测试方法</a></li><ul><li><a href="#1_Ethernet_44">1. Ethernet</a></li><li><a href="#2_USB_host_99">2. USB host</a></li><li><a href="#3_SD_Card_200">3. SD Card</a></li><ul><li><a href="#31__201">3.1 速度测试</a></li><li><a href="#32_T_238">3.2 T卡启动测试</a></li></ul><li><a href="#4_GPIO_319">4. GPIO</a></li><li><a href="#5_I2C_342">5. I2C</a></li><li><a href="#6_SPI_371">6. SPI</a></li><li><a href="#7_PWM_427">7. PWM</a></li><li><a href="#8_JTAG_472">8. JTAG</a></li><li><a href="#9_BT__476">9. BT 测试</a></li><li><a href="#10_wifi_518">10. wifi测试</a></li><ul><li><a href="#101_STA_523">10.1 STA模式</a></li><ul><li><a href="#1011__571">10.1.1 板载天线</a></li><li><a href="#1011__692">10.1.1 外置天线</a></li></ul><li><a href="#102_AP_774">10.2 AP模式</a></li></ul><li><a href="#11_DSI_846">11. DSI测试</a></li><ul><li><a href="#111_Terminal_849">11.1 显示Terminal</a></li><li><a href="#112_CSI0J1_897">11.2 CSI0（J1接口）</a></li><li><a href="#113_CSI1J2_966">11.3 CSI1（J2接口）</a></li></ul><li><a href="#12_HDMI_997">12. HDMI测试</a></li><ul><li><a href="#121_Terminal_998">12.1 显示Terminal</a></li><li><a href="#122_CSI0J1_1001">12.2 CSI0（J1接口）</a></li><li><a href="#123_CSI1J2_1063">12.3 CSI1（J2接口）</a></li></ul><li><a href="#13_DSP_1117">13. DSP测试</a></li><li><a href="#14_Audio_1185">14. Audio</a></li><li><a href="#15_CPU_1191">15. CPU跑分</a></li></ul></ul></div><p></p>
+<h1><a id="_1"></a>一、测试环境</h1>
+<p><strong>硬件：</strong><br>
+BeagleV<br>
+<strong>软件：</strong><br>
+kernel: 4.19.0-sifive-1<br>
+BusyBox v1.29.3 (2021-02-05 19:37:29 CST) multi-call binary.<br>
+<strong>主机：</strong><br>
+VirtualBox6.1<br>
+Ubuntu 20.04.1</p>
+<h1><a id="_11"></a>二、测试概述</h1>
+
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>BeagleV</th>
+<th>树莓派Pi4</th>
+<th>备注</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Ethernet</td>
+<td>Tx:301Mbps  Rx:285Mbps</td>
+<td>Tx:840Mbps  Rx:837Mbps</td>
+<td>\</td>
+</tr>
+<tr>
+<td>USB Host</td>
+<td>A:67.7MB/s  B:71.6MB/s<br> C:65.8MB/s  D:74.3MB/s</td>
+<td>A:35.6 MB/s  B:35.7 MB/s<br> C:310 MB/s  D:302 MB/s</td>
+<td>\</td>
+</tr>
+<tr>
+<td>SD Card</td>
+<td>① 读取速度：4.58MB/s<br> ② T卡烧录、启动系统</td>
+<td>45.1 MB/s</td>
+<td>Pi4有缓存机制，BeagleV没有</td>
+</tr>
+<tr>
+<td>GPIO</td>
+<td>GPIO0~GPIO27 输入输出正常</td>
+<td>–</td>
+<td>\</td>
+</tr>
+<tr>
+<td>UART</td>
+<td>Rx、Tx正常</td>
+<td>–</td>
+<td>\</td>
+</tr>
+<tr>
+<td>I2C</td>
+<td>可读写i2c设备</td>
+<td>–</td>
+<td>\</td>
+</tr>
+<tr>
+<td>SPI</td>
+<td>回环ok，spi flash测试ok</td>
+<td>spi flash测试ok</td>
+<td>① Pi4有2组spi，BeagleV只有1组; <br>② spi clock频率不对;</td>
+</tr>
+<tr>
+<td>PWM</td>
+<td>有波形输出，<mark>但存在问题</mark></td>
+<td>–</td>
+<td>更新参数后，波形会停止输出，过很长一段时间波形才再次输出</td>
+</tr>
+<tr>
+<td>JTAG</td>
+<td>测试成功</td>
+<td>–</td>
+<td>成功烧写bootloader和ddrinit文件</td>
+</tr>
+<tr>
+<td>HDMI</td>
+<td><mark>测试失败</mark></td>
+<td>显示ok</td>
+<td>① 7寸：u-boot白屏，kernel黑屏；<br> ② AOC：提示输入不支持；③ LG：不显示；<br>④ dell：terminal可以正常显示，但偶尔花屏；<br>⑤ BeagleBone与BeagleV使用同型号HDMI芯片，可以正常显示</td>
+</tr>
+<tr>
+<td>BT</td>
+<td>设备连接成功</td>
+<td></td>
+<td>可以扫描设备，并完成配对。</td>
+</tr>
+<tr>
+<td>WIFI STA</td>
+<td>TCP Tx:14.0Mbps Rx:12.7Mbps<br> UDP Tx:20.6Mbps Tx:16.4Mbps</td>
+<td>–</td>
+<td>网速较慢</td>
+</tr>
+<tr>
+<td>WIFI AP</td>
+<td>可以连接，可ping通</td>
+<td>–</td>
+<td>\</td>
+</tr>
+<tr>
+<td>DSI+CSI0/1</td>
+<td>可显示，<mark>但存在问题</mark></td>
+<td>–</td>
+<td>第三方5寸屏可显示（但颜色不对），<br>树莓派官方7寸屏无法显示</td>
+</tr>
+<tr>
+<td>HDMI+CSI0/1</td>
+<td>可显示，但颜色异常</td>
+<td>–</td>
+<td>CSI0和CSI1存在同样的问题：显示颜色非常暗且发绿</td>
+</tr>
+<tr>
+<td>DSP</td>
+<td>测试成功</td>
+<td>–</td>
+<td>测试文档：《xrp_test_doc.doc》</td>
+</tr>
+<tr>
+<td>Audio</td>
+<td>测试成功</td>
+<td>-</td>
+<td>测试固件：fw_vic.bin.out</td>
+</tr>
+<tr>
+<td>CPU跑分</td>
+<td>Dhrystones: 2500000<br></td>
+<td>Dhrystones : 9090909</td>
+<td>\</td>
+</tr>
+</tbody>
+</table><p><strong>问题总结：</strong></p>
+<ol>
+<li>Ethernet速度BeagleV比树莓派慢；</li>
+<li>USB Host读取移动硬盘速度BeagleV比树莓派慢；</li>
+<li>SD Card读取速度BeagleV比树莓派慢；</li>
+<li>SPI的设置频率与实际输出频率不一致；</li>
+<li>PWM更新参数后，波形会停止输出，过很长一段时间波形才会再次输出；</li>
+<li>编译报错：Ubuntu 20.04.1下编译报错。lmde-4也经常编译报错；</li>
+<li>HDMI测试，目前只有dell显示器可以显示terminal（存在花屏的问题）；</li>
+<li>HDMI+CSI0/1：显示颜色非常暗且发绿；</li>
+</ol>
+<h1><a id="_43"></a>三、测试方法</h1>
+<h2><a id="1_Ethernet_44"></a>1. Ethernet</h2>
+<p>测试工具：iperf3</p>
+<pre><code class="prism language-bash"><span class="token comment"># HOST - vbox虚拟机</span>
+<span class="token function">sudo</span> iperf3 -s -p 1000
+</code></pre>
+<p>BeagleV测试结果：</p>
+<pre><code class="prism language-bash"><span class="token comment"># iperf3 -c 192.168.4.156 -p 1000</span>
+Connecting to host 192.168.4.156, port 1000
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span> local 192.168.4.177 port 32944 connected to 192.168.4.156 port 1000
+<span class="token punctuation">[</span> ID<span class="token punctuation">]</span> Interval           Transfer     Bitrate         Retr  Cwnd
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   0.00-1.02   sec  39.8 MBytes   329 Mbits/sec    0    195 KBytes       
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   1.02-2.03   sec  40.0 MBytes   331 Mbits/sec    0    198 KBytes       
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   2.03-3.01   sec  15.6 MBytes   133 Mbits/sec    0    208 KBytes       
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   3.01-4.01   sec  26.0 MBytes   219 Mbits/sec    0    215 KBytes       
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   4.01-5.02   sec  40.0 MBytes   330 Mbits/sec    1    223 KBytes       
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   5.02-6.00   sec  38.8 MBytes   332 Mbits/sec    1    226 KBytes       
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   6.00-7.02   sec  40.0 MBytes   329 Mbits/sec    0    233 KBytes       
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   7.02-8.00   sec  38.8 MBytes   332 Mbits/sec    0    242 KBytes       
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   8.00-9.01   sec  40.0 MBytes   333 Mbits/sec    1    242 KBytes       
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   9.01-10.02  sec  40.0 MBytes   333 Mbits/sec    0    247 KBytes       
+- - - - - - - - - - - - - - - - - - - - - - - - -
+<span class="token punctuation">[</span> ID<span class="token punctuation">]</span> Interval           Transfer     Bitrate         Retr
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   0.00-10.02  sec   359 MBytes   301 Mbits/sec    3             sender
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   0.00-10.56  sec   358 MBytes   285 Mbits/sec                  receiver
+
+iperf Done.
+</code></pre>
+<p>树莓派Pi4测试结果：</p>
+<pre><code class="prism language-bash">pi@raspberrypi:~ $ <span class="token function">sudo</span> iperf3 -c 192.168.4.156 -p 1000
+Connecting to host 192.168.4.156, port 1000
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span> local 192.168.4.58 port 44438 connected to 192.168.4.156 port 1000
+<span class="token punctuation">[</span> ID<span class="token punctuation">]</span> Interval           Transfer     Bitrate         Retr  Cwnd
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   0.00-1.00   sec  58.1 MBytes   487 Mbits/sec    1    563 KBytes
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   1.00-2.00   sec   111 MBytes   932 Mbits/sec    0    731 KBytes
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   2.00-3.00   sec   110 MBytes   922 Mbits/sec   14    595 KBytes
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   3.00-4.00   sec   110 MBytes   925 Mbits/sec    0    642 KBytes
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   4.00-5.00   sec   112 MBytes   937 Mbits/sec    0    676 KBytes
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   5.00-6.00   sec   110 MBytes   921 Mbits/sec    0    708 KBytes
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   6.00-7.00   sec   112 MBytes   936 Mbits/sec    0    742 KBytes
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   7.00-8.00   sec   111 MBytes   927 Mbits/sec   32    577 KBytes
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   8.00-9.00   sec  58.4 MBytes   490 Mbits/sec    1    677 KBytes
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   9.00-10.00  sec   110 MBytes   923 Mbits/sec   54    375 KBytes
+- - - - - - - - - - - - - - - - - - - - - - - - -
+<span class="token punctuation">[</span> ID<span class="token punctuation">]</span> Interval           Transfer     Bitrate         Retr
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   0.00-10.00  sec  1001 MBytes   840 Mbits/sec  102             sender
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   0.00-10.01  sec   999 MBytes   837 Mbits/sec                  receiver
+
+iperf Done.
+</code></pre>
+<h2><a id="2_USB_host_99"></a>2. USB host</h2>
+<p>测试设备：</p>
+<pre><code class="prism language-bash"><span class="token punctuation">[</span> 4870.720000<span class="token punctuation">]</span> usb 2-1.4: new SuperSpeed Gen 1 USB device number 5 using xhci-hcd
+<span class="token punctuation">[</span> 4870.760000<span class="token punctuation">]</span> usb 2-1.4: New USB device found, idVendor<span class="token operator">=</span>2109, idProduct<span class="token operator">=</span>0715, bcdDevice<span class="token operator">=</span>f0.00
+<span class="token punctuation">[</span> 4870.780000<span class="token punctuation">]</span> usb 2-1.4: New USB device strings: Mfr<span class="token operator">=</span>1, Product<span class="token operator">=</span>2, SerialNumber<span class="token operator">=</span>3
+<span class="token punctuation">[</span> 4870.790000<span class="token punctuation">]</span> usb 2-1.4: Product: VLI Product String
+<span class="token punctuation">[</span> 4870.800000<span class="token punctuation">]</span> usb 2-1.4: Manufacturer: VLI Manufacture String
+<span class="token punctuation">[</span> 4870.810000<span class="token punctuation">]</span> usb 2-1.4: SerialNumber: 000000123C05
+<span class="token punctuation">[</span> 4870.830000<span class="token punctuation">]</span> scsi host0: uas
+<span class="token punctuation">[</span> 4871.750000<span class="token punctuation">]</span> scsi 0:0:0:0: Direct-Access     KINGSHAR KS-AMTU3C        2210 PQ: 0 ANSI: 6
+<span class="token punctuation">[</span> 4871.770000<span class="token punctuation">]</span> sd 0:0:0:0: <span class="token punctuation">[</span>sda<span class="token punctuation">]</span> 250069680 512-byte logical blocks: <span class="token punctuation">(</span>128 GB/119 GiB<span class="token punctuation">)</span>
+<span class="token punctuation">[</span> 4871.790000<span class="token punctuation">]</span> sd 0:0:0:0: <span class="token punctuation">[</span>sda<span class="token punctuation">]</span> Write Protect is off
+<span class="token punctuation">[</span> 4871.800000<span class="token punctuation">]</span> sd 0:0:0:0: <span class="token punctuation">[</span>sda<span class="token punctuation">]</span> Mode Sense: 2f 00 00 00
+<span class="token punctuation">[</span> 4871.820000<span class="token punctuation">]</span> sd 0:0:0:0: <span class="token punctuation">[</span>sda<span class="token punctuation">]</span> Write cache: enabled, <span class="token function">read</span> cache: enabled, doesn't support DPO or FUA
+<span class="token punctuation">[</span> 4871.840000<span class="token punctuation">]</span>  sda: sda1
+<span class="token punctuation">[</span> 4871.860000<span class="token punctuation">]</span> sd 0:0:0:0: <span class="token punctuation">[</span>sda<span class="token punctuation">]</span> Attached SCSI disk
+</code></pre>
+<p>BeagleV测试结果：</p>
+<pre><code class="prism language-bash">端口A：
+<span class="token comment"># time dd if=/dev/sda1 of=/dev/null bs=512k count=5000</span>
+5000+0 records <span class="token keyword">in</span>
+5000+0 records out
+real    0m 36.81s
+user    0m 0.05s
+sys     0m 33.91s
+<span class="token comment"># 512*5000/1024/36.91 = 67.7MB/s</span>
+
+端口B：
+<span class="token comment"># time dd if=/dev/sda1 of=/dev/null bs=512k count=5000</span>
+5000+0 records <span class="token keyword">in</span>
+5000+0 records out
+real    0m 34.91s
+user    0m 0.03s
+sys     0m 31.07s
+<span class="token comment"># 512*5000/1024/34.91 = 71.6MB/s </span>
+
+端口C：
+<span class="token comment"># time dd if=/dev/sda1 of=/dev/null bs=512k count=5000</span>
+5000+0 records <span class="token keyword">in</span>
+5000+0 records out
+real    0m 38.00s
+user    0m 0.05s
+sys     0m 34.63s
+<span class="token comment"># 512*5000/1024/38.00 = 65.8MB/s </span>
+
+端口D：
+<span class="token comment"># time dd if=/dev/sda1 of=/dev/null bs=512k count=5000</span>
+5000+0 records <span class="token keyword">in</span>
+5000+0 records out
+real    0m 33.65s
+user    0m 0.01s
+sys     0m 29.52s
+<span class="token comment"># 512*5000/1024/33.65 = 74.3MB/s</span>
+</code></pre>
+<p>Pi4测试结果：</p>
+<pre><code class="prism language-bash">端口A：
+pi@raspberrypi:~ $ <span class="token function">time</span> <span class="token function">sudo</span> <span class="token function">dd</span> if<span class="token operator">=</span>/dev/sda1 of<span class="token operator">=</span>/dev/null bs<span class="token operator">=</span>512k count<span class="token operator">=</span>5000
+5000+0 records <span class="token keyword">in</span>
+5000+0 records out
+2621440000 bytes <span class="token punctuation">(</span>2.6 GB, 2.4 GiB<span class="token punctuation">)</span> copied, 73.64 s, 35.6 MB/s
+
+real    1m13.668s
+user    0m0.022s
+sys     0m10.513s
+
+端口B：
+pi@raspberrypi:~ $ <span class="token function">time</span> <span class="token function">sudo</span> <span class="token function">dd</span> if<span class="token operator">=</span>/dev/sda1 of<span class="token operator">=</span>/dev/null bs<span class="token operator">=</span>512k count<span class="token operator">=</span>5000
+5000+0 records <span class="token keyword">in</span>
+5000+0 records out
+2621440000 bytes <span class="token punctuation">(</span>2.6 GB, 2.4 GiB<span class="token punctuation">)</span> copied, 73.4091 s, 35.7 MB/s
+
+real    1m13.434s
+user    0m0.061s
+sys     0m10.330s
+
+端口C：
+pi@raspberrypi:~ $ <span class="token function">time</span> <span class="token function">sudo</span> <span class="token function">dd</span> if<span class="token operator">=</span>/dev/sda1 of<span class="token operator">=</span>/dev/null bs<span class="token operator">=</span>512k count<span class="token operator">=</span>5000
+5000+0 records <span class="token keyword">in</span>
+5000+0 records out
+2621440000 bytes <span class="token punctuation">(</span>2.6 GB, 2.4 GiB<span class="token punctuation">)</span> copied, 8.46882 s, 310 MB/s
+
+real    0m8.489s
+user    0m0.010s
+sys     0m6.025s
+
+端口D：
+pi@raspberrypi:~ $ <span class="token function">time</span> <span class="token function">sudo</span> <span class="token function">dd</span> if<span class="token operator">=</span>/dev/sda1 of<span class="token operator">=</span>/dev/null bs<span class="token operator">=</span>512k count<span class="token operator">=</span>5000
+5000+0 records <span class="token keyword">in</span>
+5000+0 records out
+2621440000 bytes <span class="token punctuation">(</span>2.6 GB, 2.4 GiB<span class="token punctuation">)</span> copied, 8.69142 s, 302 MB/s
+
+real    0m8.713s
+user    0m0.029s
+sys     0m6.196s
+</code></pre>
+<h2><a id="3_SD_Card_200"></a>3. SD Card</h2>
+<h3><a id="31__201"></a>3.1 速度测试</h3>
+<p>BeagleV测试结果：</p>
+<pre><code class="prism language-bash"><span class="token comment"># time dd if=/dev/mmcblk0p1 of=/dev/null bs=512k count=5000</span>
+512+0 records <span class="token keyword">in</span>
+512+0 records out
+real    0m 55.89s
+user    0m 0.01s
+sys     0m 2.24s
+<span class="token comment"># 256MB/55.89s = 4.58MB/s</span>
+<span class="token comment"># time dd if=/dev/mmcblk0p1 of=/dev/null bs=512k count=5000</span>
+512+0 records <span class="token keyword">in</span>
+512+0 records out
+real    0m 55.89s
+user    0m 0.00s
+sys     0m 2.06s
+</code></pre>
+<p>Pi4测试结果：</p>
+<pre><code class="prism language-bash">pi@raspberrypi:~ $ <span class="token function">time</span> <span class="token function">sudo</span> <span class="token function">dd</span> if<span class="token operator">=</span>/dev/mmcblk0p1 of<span class="token operator">=</span>/dev/null bs<span class="token operator">=</span>512k count<span class="token operator">=</span>5000
+512+0 records <span class="token keyword">in</span>
+512+0 records out
+268435456 bytes <span class="token punctuation">(</span>268 MB, 256 MiB<span class="token punctuation">)</span> copied, 6.00996 s, 44.7 MB/s
+
+real    0m6.088s
+user    0m0.029s
+sys     0m0.895s
+
+pi@raspberrypi:~ $ <span class="token function">time</span> <span class="token function">sudo</span> <span class="token function">dd</span> if<span class="token operator">=</span>/dev/mmcblk0p1 of<span class="token operator">=</span>/dev/null bs<span class="token operator">=</span>512k count<span class="token operator">=</span>5000
+512+0 records <span class="token keyword">in</span>
+2+0 records out
+268435456 bytes <span class="token punctuation">(</span>268 MB, 256 MiB<span class="token punctuation">)</span> copied, 0.331688 s, 809 MB/s
+
+real    0m0.372s
+user    0m0.012s
+sys     0m0.355s
+</code></pre>
+<h3><a id="32_T_238"></a>3.2 T卡启动测试</h3>
+<p>烧写镜像到T卡</p>
+<pre><code class="prism language-bash">lmde@vb:/work/sf/beagle_freedeom_u_sdk$ <span class="token function">sudo</span> <span class="token function">make</span> DISK<span class="token operator">=</span>/dev/sdc format-nvdla-disk 
+/sbin/sgdisk --clear  \
+	--new<span class="token operator">=</span>1:4096:269502  --change-name<span class="token operator">=</span>1:<span class="token string">"Vfat Boot"</span>  --typecode<span class="token operator">=</span>1:EBD0A0A2-B9E5-4433-87C0-68B6B72699C7   \
+	--new<span class="token operator">=</span>2:2048:4048   --change-name<span class="token operator">=</span>2:uboot --typecode<span class="token operator">=</span>2:5B193300-FC78-40CD-8002-E86C45580B47 \
+	--new<span class="token operator">=</span>3:542004:0 --change-name<span class="token operator">=</span>3:root  --typecode<span class="token operator">=</span>3:0FC63DAF-8483-4772-8E79-3D69D8477DE4 \
+	/dev/sdc
+Caution: invalid backup GPT header, but valid main header<span class="token punctuation">;</span> regenerating
+backup header from main header.
+
+Warning<span class="token operator">!</span> Main and backup partition tables differ<span class="token operator">!</span> Use the <span class="token string">'c'</span> and <span class="token string">'e'</span> options
+on the recovery <span class="token operator">&amp;</span> transformation menu to examine the two tables.
+
+Warning<span class="token operator">!</span> One or <span class="token function">more</span> CRCs don't match. You should repair the disk<span class="token operator">!</span>
+
+****************************************************************************
+Caution: Found protective or hybrid MBR and corrupt GPT. Using GPT, but disk
+verification and recovery are STRONGLY recommended.
+****************************************************************************
+Setting name<span class="token operator">!</span>
+partNum is 0
+Setting name<span class="token operator">!</span>
+partNum is 1
+Information: Moved requested sector from 542004 to 540672 <span class="token keyword">in</span>
+order to align on 2048-sector boundaries.
+Setting name<span class="token operator">!</span>
+partNum is 2
+Warning: The kernel is still using the old partition table.
+The new table will be used at the next <span class="token function">reboot</span> or after you
+run partprobe<span class="token punctuation">(</span>8<span class="token punctuation">)</span> or kpartx<span class="token punctuation">(</span>8<span class="token punctuation">)</span>
+The operation has completed successfully.
+/sbin/partprobe
+Error: The backup GPT table is corrupt, but the primary appears OK, so that will be used.
+<span class="token function">dd</span> if<span class="token operator">=</span>/work/sf/beagle_freedeom_u_sdk/work/HiFive_U-Boot/u-boot.bin of<span class="token operator">=</span>/dev/sdc2 bs<span class="token operator">=</span>4096
+134+1 records <span class="token keyword">in</span>
+134+1 records out
+551831 bytes <span class="token punctuation">(</span>552 kB, 539 KiB<span class="token punctuation">)</span> copied, 0.255097 s, 2.2 MB/s
+<span class="token function">dd</span> if<span class="token operator">=</span>/work/sf/beagle_freedeom_u_sdk/work/hifive-unleashed-vfat.part of<span class="token operator">=</span>/dev/sdc1 bs<span class="token operator">=</span>4096
+32931+1 records <span class="token keyword">in</span>
+32931+1 records out
+134888448 bytes <span class="token punctuation">(</span>135 MB, 129 MiB<span class="token punctuation">)</span> copied, 32.1162 s, 4.2 MB/s
+</code></pre>
+<p>系统正常启动</p>
+<pre><code class="prism language-bash">U-Boot 2018.09-gff75401 <span class="token punctuation">(</span>Feb 26 2021 - 11:48:14 +0800<span class="token punctuation">)</span>
+
+DRAM:  2 GiB
+MMC:   VIC DWMMC0: 0
+In:    serial
+Out:   serial
+Err:   serial
+Net:   dwmac.10020000
+Hit any key to stop autoboot:  0 
+
+Partition Map <span class="token keyword">for</span> MMC device 0  --   Partition Type: EFI
+
+Part    Start LBA       End LBA         Name
+        Attributes
+        Type GUID
+        Partition GUID
+  1     0x00001000      0x00041cbe      <span class="token string">"Vfat Boot"</span>
+        attrs:  0x0000000000000000
+        type:   ebd0a0a2-b9e5-4433-87c0-68b6b72699c7
+        type:   data
+        guid:   afc1fd03-3f7e-4610-9e68-10c2d8a45ddb
+  2     0x00000800      0x00000fd0      <span class="token string">"uboot"</span>
+        attrs:  0x0000000000000000
+        type:   5b193300-fc78-40cd-8002-e86c45580b47
+        guid:   ab375f36-26f4-4af2-9ffb-b1c24ad75188
+  3     0x00084000      0x03e7ffde      <span class="token string">"root"</span>
+        attrs:  0x0000000000000000
+        type:   0fc63daf-8483-4772-8e79-3d69d8477de4
+        type:   linux
+        guid:   bf0ad4aa-8baa-4771-8c0b-7ab4f103f677
+2144 bytes <span class="token function">read</span> <span class="token keyword">in</span> 4 ms <span class="token punctuation">(</span>523.4 KiB/s<span class="token punctuation">)</span>
+running boot2<span class="token punctuation">..</span>.
+32724902 bytes <span class="token function">read</span> <span class="token keyword">in</span> 7221 ms <span class="token punctuation">(</span>4.3 MiB/s<span class="token punctuation">)</span>
+</code></pre>
+<h2><a id="4_GPIO_319"></a>4. GPIO</h2>
+<p>测试方法：</p>
+<pre><code class="prism language-bash"><span class="token function">cd</span> /sys/class/gpio
+
+<span class="token comment"># FNSH009_RPI_GPIO0输出:</span>
+<span class="token keyword">echo</span> 9 <span class="token operator">&gt;</span> <span class="token function">export</span>
+<span class="token keyword">echo</span> out <span class="token operator">&gt;</span> gpio9/direction
+<span class="token keyword">echo</span> 1 <span class="token operator">&gt;</span> gpio9/value    <span class="token comment"># 万用表测量电压3.3v</span>
+<span class="token keyword">echo</span> 0 <span class="token operator">&gt;</span> gpio9/value    <span class="token comment"># 万用表测量电压0v</span>
+
+<span class="token comment"># FNSH009_RPI_GPIO0输入:</span>
+<span class="token keyword">echo</span> <span class="token keyword">in</span> <span class="token operator">&gt;</span> gpio9/direction
+<span class="token comment"># FNSH009_RPI_GPIO0接到高VCC_3V3：</span>
+<span class="token function">cat</span> gpio9/value
+1
+<span class="token comment"># FNSH009_RPI_GPIO0接到GND:</span>
+<span class="token function">cat</span> gpio9/value
+0
+</code></pre>
+<p>测试结果：<br>
+GPIO0~GPIO27 按照上面方法测试，结果均正常。</p>
+<h2><a id="5_I2C_342"></a>5. I2C</h2>
+<p>测试器件：光感LS9800</p>
+<p>调整GPIO与树莓派保持一致：<br>
+<em>beagle_freedeom_u_sdk/HiFive_U-Boot/arch/riscv/dts/hifive_u74_nvdla_iofpga.dts</em></p>
+<pre><code class="prism language-bash">scl-gpio <span class="token operator">=</span> <span class="token operator">&lt;</span><span class="token operator">&amp;</span>gpio 47 0<span class="token operator">&gt;</span><span class="token punctuation">;</span>
+sda-gpio <span class="token operator">=</span> <span class="token operator">&lt;</span><span class="token operator">&amp;</span>gpio 48 0<span class="token operator">&gt;</span><span class="token punctuation">;</span>
+</code></pre>
+<p>测试结果：</p>
+<pre><code class="prism language-bash"><span class="token comment"># i2cdetect -y -r 1</span>
+     0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
+00:          -- -- -- -- -- -- -- -- -- -- -- -- -- 
+10: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
+20: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
+30: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
+40: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
+50: -- -- -- -- 54 -- -- -- -- -- -- -- -- -- -- -- 
+60: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
+70: -- -- -- -- -- -- -- --                         
+
+i2cget -y 1 0x54 0x00
+0x00
+i2cset -y 1 0x54 0x00 0x03
+i2cget -y 1 0x54 0x00
+0x03
+</code></pre>
+<h2><a id="6_SPI_371"></a>6. SPI</h2>
+<p>BeagleV一组：SPI2(2路CE)<br>
+树莓派有两组：SPI0(2路CE)、SPI1(3路CE)<br>
+<img src="https://img-blog.csdnimg.cn/20210208171331255.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZpbmRtdQ==,size_16,color_FFFFFF,t_70" alt="SPI引脚"><br>
+修改源码：</p>
+<pre><code class="prism language-cpp"><span class="token comment">// HiFive_U-Boot/board/SiFive/HiFive-U74/HiFive-U74.c</span>
+<span class="token function">INIT_FUNC_DEF</span><span class="token punctuation">(</span>spi2<span class="token punctuation">)</span>
+<span class="token punctuation">{</span>
+	<span class="token comment">//SET_SPI_GPIO(2,18,16,12,15);</span>
+	<span class="token function">SET_SPI_GPIO</span><span class="token punctuation">(</span><span class="token number">2</span><span class="token punctuation">,</span><span class="token number">18</span><span class="token punctuation">,</span><span class="token number">16</span><span class="token punctuation">,</span><span class="token number">12</span><span class="token punctuation">,</span><span class="token number">11</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span>
+</code></pre>
+<p>编译测试工具：spidev_test</p>
+<pre><code class="prism language-bash"><span class="token function">cd</span> beagle_freedeom_u_sdk\linux\tools\spi
+<span class="token punctuation">..</span>/<span class="token punctuation">..</span>/<span class="token punctuation">..</span>/work/buildroot_initramfs/host/bin/riscv64-linux-gcc spidev_test.c -o spidev_test
+tftp -l spidev_test -r spidev_test -g 192.168.4.55
+<span class="token function">chmod</span> +x spidev_test 
+</code></pre>
+<p>BeagleV回环测试（短接Pin19和Pin21）：</p>
+<pre><code class="prism language-bash">./spidev_test -D /dev/spidev1.0 -v -p string_to_send
+spi mode: 0x0
+bits per word: 8
+max speed: 500000 Hz <span class="token punctuation">(</span>500 KHz<span class="token punctuation">)</span>
+TX <span class="token operator">|</span> 73 74 72 69 6E 67 5F 74 6F 5F 73 65 6E 64 __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __  <span class="token operator">|</span> string_to_send
+RX <span class="token operator">|</span> 73 74 72 69 6E 67 5F 74 6F 5F 73 65 6E 64 __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __  <span class="token operator">|</span> string_to_send
+<span class="token comment"># </span>
+</code></pre>
+<p><img src="https://img-blog.csdnimg.cn/2021021811361782.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZpbmRtdQ==,size_16,color_FFFFFF,t_70" alt="在这里插入图片描述"><br>
+BeagleV spiflash测试：</p>
+<pre><code class="prism language-bash"><span class="token comment"># ./spidev_test -H -D /dev/spidev1.0 -v -p \\x9f\\x00\\x00\\x00</span>
+spi mode: 0x1
+bits per word: 8
+max speed: 500000 Hz <span class="token punctuation">(</span>500 KHz<span class="token punctuation">)</span>
+TX <span class="token operator">|</span> 9F 00 00 00 __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __  <span class="token operator">|</span> 
+RX <span class="token operator">|</span> 00 EF 40 18 __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __  <span class="token operator">|</span> <span class="token keyword">.</span>
+<span class="token comment"># </span>
+</code></pre>
+<p><img src="https://img-blog.csdnimg.cn/20210220100836894.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZpbmRtdQ==,size_16,color_FFFFFF,t_70" alt="BeagleV spiflash"></p>
+<p>树莓派Pi4 spiflash测试：</p>
+<pre><code class="prism language-bash">pi@raspberrypi:/work/seeed/spitest $ ./spidev_test -D /dev/spidev0.0 -v -p \\x9f\\x00\\x00\\x00
+spi mode: 0x4
+bits per word: 8
+max speed: 500000 Hz <span class="token punctuation">(</span>500 KHz<span class="token punctuation">)</span>
+TX <span class="token operator">|</span> 9F 00 00 00 __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __  <span class="token operator">|</span> ▒<span class="token punctuation">..</span>.
+RX <span class="token operator">|</span> 00 EF 40 18 __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __  <span class="token operator">|</span> .▒@.
+</code></pre>
+<p><img src="https://img-blog.csdnimg.cn/20210218143837910.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZpbmRtdQ==,size_16,color_FFFFFF,t_70" alt="raspi4"></p>
+<h2><a id="7_PWM_427"></a>7. PWM</h2>
+<p>修改源码：</p>
+<pre><code class="prism language-c"><span class="token comment">// HiFive_U-Boot/board/SiFive/HiFive-U74/vic_ptc.c</span>
+<span class="token keyword">void</span> <span class="token function">ptc_pinmux_init</span><span class="token punctuation">(</span>uint32_t num<span class="token punctuation">)</span>
+<span class="token punctuation">{</span>
+	uint32_t i <span class="token operator">=</span> <span class="token number">0</span><span class="token punctuation">;</span>
+	
+<span class="token macro property">#<span class="token directive keyword">if</span> defined(VIC_EVB_V1)  </span>
+    <span class="token keyword">if</span><span class="token punctuation">(</span>num <span class="token operator">==</span> <span class="token number">0</span><span class="token punctuation">)</span>    <span class="token comment">/* GPIOB33 */</span>
+    <span class="token punctuation">{</span>
+        SET_GPIO_5_dout_pwm_pad_out_bit0<span class="token punctuation">;</span>
+        SET_GPIO_5_doen_LOW<span class="token punctuation">;</span>
+        <span class="token keyword">while</span><span class="token punctuation">(</span><span class="token number">0</span><span class="token punctuation">)</span>
+        <span class="token punctuation">{</span>
+            SET_GPIO_5_dout_LOW<span class="token punctuation">;</span>
+            <span class="token keyword">for</span><span class="token punctuation">(</span>i<span class="token operator">=</span><span class="token number">0</span><span class="token punctuation">;</span> i<span class="token operator">&lt;</span><span class="token number">100</span><span class="token punctuation">;</span> i<span class="token operator">++</span><span class="token punctuation">)</span>    <span class="token punctuation">;</span>
+            SET_GPIO_5_dout_HIGH<span class="token punctuation">;</span>
+        <span class="token punctuation">}</span>
+    <span class="token punctuation">}</span><span class="token keyword">else</span> <span class="token keyword">if</span><span class="token punctuation">(</span>num <span class="token operator">==</span> <span class="token number">1</span><span class="token punctuation">)</span>
+</code></pre>
+<pre><code class="prism language-c"><span class="token comment">// HiFive_U-Boot/board/SiFive/HiFive-U74/HiFive-U74.c</span>
+<span class="token keyword">int</span> <span class="token function">board_hw_init</span><span class="token punctuation">(</span><span class="token keyword">void</span><span class="token punctuation">)</span>
+<span class="token punctuation">{</span>
+<span class="token operator">--</span><span class="token operator">-</span>	<span class="token comment">// INIT_FUNC_CALL(ptc);</span>
+<span class="token operator">++</span><span class="token operator">+</span>	<span class="token function">INIT_FUNC_CALL</span><span class="token punctuation">(</span>ptc<span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span>
+</code></pre>
+<p>测试方法：<br>
+逻辑分析仪CH1分别连接下面引脚进行测试：<br>
+FNSH005_RPI_GPIO13<br>
+FNSH007_RPI_GPIO12<br>
+FNSH045_RP_GPIO18</p>
+<pre><code class="prism language-bash"><span class="token function">cd</span> /sys/class/pwm/pwmchip0/
+<span class="token keyword">echo</span> 0 <span class="token operator">&gt;</span> <span class="token function">export</span>
+<span class="token function">cd</span> pwm0/
+<span class="token keyword">echo</span> 60000 <span class="token operator">&gt;</span> period
+<span class="token keyword">echo</span> 20000 <span class="token operator">&gt;</span> duty_cycle 
+</code></pre>
+<p>BeagleV PWM输出波形：<br>
+<img src="https://img-blog.csdnimg.cn/20210220095126495.png" alt="BeagleV PWM波形"></p>
+<h2><a id="8_JTAG_472"></a>8. JTAG</h2>
+<p><img src="https://img-blog.csdnimg.cn/20210219141349271.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZpbmRtdQ==,size_16,color_FFFFFF,t_70" alt="JTAG"><br>
+按照《FreedomSDK安装手册_01.pdf》步骤烧写bootloader和ddrinit文件。</p>
+<h2><a id="9_BT__476"></a>9. BT 测试</h2>
+<p><a href="https://blog.csdn.net/weixin_33704591/article/details/92505020">input 测试工具 --evtest</a></p>
+<pre><code class="prism language-bash">hciconfig hci0 up
+bluetoothctl
+
+<span class="token punctuation">[</span>bluetooth<span class="token punctuation">]</span><span class="token comment"># scan on</span>
+Discovery started
+<span class="token punctuation">[</span>CHG<span class="token punctuation">]</span> Controller 10:2C:6B:A9:6E:FF Discovering: <span class="token function">yes</span>
+<span class="token punctuation">[</span>NEW<span class="token punctuation">]</span> Device 0B:4E:E2:53:E6:10 RAPOO BT4.0 Mouse
+<span class="token punctuation">[</span>CHG<span class="token punctuation">]</span> Device 56:7A:72:AF:D6:AB RSSI: -72
+
+<span class="token punctuation">[</span>bluetooth<span class="token punctuation">]</span><span class="token comment"># pair 0B:4E:E2:53:E6:10</span>
+Attempting to pair with 0B:4E:E2:53:E6:10
+
+<span class="token punctuation">[</span>bluetooth<span class="token punctuation">]</span><span class="token comment"># trust 0B:4E:E2:53:E6:10</span>
+<span class="token punctuation">[</span>CHG<span class="token punctuation">]</span> Device 0B:4E:E2:53:E6:10 Trusted: <span class="token function">yes</span>
+Changing 0B:4E:E2:53:E6:10 trust succeeded
+
+<span class="token punctuation">[</span>bluetooth<span class="token punctuation">]</span><span class="token comment"># connect 0B:4E:E2:53:E6:10</span>
+Attempting to connect to 0B:4E:E2:53:E6:10
+
+<span class="token punctuation">[</span>RAPOO BT4.0 Mouse<span class="token punctuation">]</span><span class="token comment"># info</span>
+Device 0B:4E:E2:53:E6:10 <span class="token punctuation">(</span>public<span class="token punctuation">)</span>
+        Name: RAPOO BT4.0 Mouse
+        Alias: RAPOO BT4.0 Mouse
+        Appearance: 0x03c2
+        Icon: input-mouse
+        Paired: <span class="token function">yes</span>
+        Trusted: <span class="token function">yes</span>
+        Blocked: no
+        Connected: <span class="token function">yes</span>
+        LegacyPairing: no
+        UUID: Generic Access Profile    <span class="token punctuation">(</span>00001800-0000-1000-8000-00805f9b34fb<span class="token punctuation">)</span>
+        UUID: Generic Attribute Profile <span class="token punctuation">(</span>00001801-0000-1000-8000-00805f9b34fb<span class="token punctuation">)</span>
+        UUID: Device Information        <span class="token punctuation">(</span>0000180a-0000-1000-8000-00805f9b34fb<span class="token punctuation">)</span>
+        UUID: Battery Service           <span class="token punctuation">(</span>0000180f-0000-1000-8000-00805f9b34fb<span class="token punctuation">)</span>
+        UUID: Human Interface Device    <span class="token punctuation">(</span>00001812-0000-1000-8000-00805f9b34fb<span class="token punctuation">)</span>
+        Modalias: usb:v000Ep3412d6701
+</code></pre>
+<h2><a id="10_wifi_518"></a>10. wifi测试</h2>
+<p>测试条件：<br>
+荣耀路由器X2  - 2.4G<br>
+虚拟机lmde-4  +  300Mbps USB 无线网卡</p>
+<h3><a id="101_STA_523"></a>10.1 STA模式</h3>
+<p>修改代码：</p>
+<pre><code class="prism language-bash">$ <span class="token function">make</span> buildroot_initramfs-menuconfig
+		Target packages  ---<span class="token operator">&gt;</span>
+    	Networking applications  ---<span class="token operator">&gt;</span>
+    		<span class="token punctuation">[</span>*<span class="token punctuation">]</span> wpa_supplicant
+    		<span class="token punctuation">[</span>*<span class="token punctuation">]</span>   Enable nl80211 support
+    		<span class="token punctuation">[</span>*<span class="token punctuation">]</span>   Enable AP mode
+    		<span class="token punctuation">[</span>*<span class="token punctuation">]</span>   Enable WPS
+    		<span class="token punctuation">[</span>*<span class="token punctuation">]</span>   Install wpa_cli binary
+    		<span class="token punctuation">[</span>*<span class="token punctuation">]</span>   Install wpa_client shared library
+</code></pre>
+<p>测试步骤：</p>
+<pre><code class="prism language-bash"><span class="token function">ifconfig</span> wlan0 up
+</code></pre>
+<pre><code class="prism language-bash"><span class="token comment"># cat /etc/wpa_supplicant.conf </span>
+ctrl_interface<span class="token operator">=</span>/var/run/wpa_supplicant
+
+network<span class="token operator">=</span><span class="token punctuation">{</span>
+  ssid<span class="token operator">=</span><span class="token string">"qunanan"</span>
+  psk<span class="token operator">=</span><span class="token string">"wdrqgbsj"</span>
+<span class="token punctuation">}</span>
+</code></pre>
+<pre><code class="prism language-bash">wpa_supplicant -Dnl80211 -i wlan0 -c /etc/wpa_supplicant.conf -d<span class="token operator">&amp;</span>
+</code></pre>
+<pre><code class="prism language-bash">udhcpc -i wlan0
+</code></pre>
+<pre><code class="prism language-bash"><span class="token function">ifconfig</span>
+wlan0     Link encap:Ethernet  HWaddr 10:2C:6B:A9:6E:FE  
+          inet addr:10.0.0.145  Bcast:10.0.0.255  Mask:255.255.255.0
+          inet6 addr: fe80::122c:6bff:fea9:6efe/64 Scope:Link
+          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
+          RX packets:6 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:16 errors:0 dropped:0 overruns:0 carrier:0
+          collisions:0 txqueuelen:1000 
+          RX bytes:1024 <span class="token punctuation">(</span>1.0 KiB<span class="token punctuation">)</span>  TX bytes:1908 <span class="token punctuation">(</span>1.8 KiB<span class="token punctuation">)</span>
+</code></pre>
+<p><strong>HOST - vbox虚拟机</strong></p>
+<pre><code class="prism language-bash"><span class="token function">sudo</span> iperf3 -s -p 1000
+</code></pre>
+<h4><a id="1011__571"></a>10.1.1 板载天线</h4>
+<pre><code class="prism language-bash">wlan0: New scan results available <span class="token punctuation">(</span>own<span class="token operator">=</span>1 ext<span class="token operator">=</span>0<span class="token punctuation">)</span>
+wlan0: Radio work <span class="token string">'scan'</span>@0xae920 <span class="token keyword">done</span> <span class="token keyword">in</span> 1.156932 seconds
+wlan0: radio_work_free<span class="token punctuation">(</span><span class="token string">'scan'</span>@0xae920<span class="token punctuation">)</span>: num_active_works --<span class="token operator">&gt;</span> 0
+wlan0: Selecting BSS from priority group 0
+wlan0: 0: 8c:de:f9:e2:f9:ba ssid<span class="token operator">=</span><span class="token string">'STU-EE'</span> wpa_ie_len<span class="token operator">=</span>0 rsn_ie_len<span class="token operator">=</span>20 caps<span class="token operator">=</span>0x431 level<span class="token operator">=</span>-41 freq<span class="token operator">=</span>2437  wps
+wlan0:    skip - SSID mismatch
+wlan0: 1: a0:ec:f9:9f:41:31 ssid<span class="token operator">=</span><span class="token string">'seeed-guest'</span> wpa_ie_len<span class="token operator">=</span>0 rsn_ie_len<span class="token operator">=</span>20 caps<span class="token operator">=</span>0x1431 level<span class="token operator">=</span>-42 freq<span class="token operator">=</span>2427 
+wlan0:    skip - SSID mismatch
+wlan0: 2: a0:ec:f9:9f:41:30 ssid<span class="token operator">=</span><span class="token string">'SEEED-MKT'</span> wpa_ie_len<span class="token operator">=</span>0 rsn_ie_len<span class="token operator">=</span>20 caps<span class="token operator">=</span>0x1431 level<span class="token operator">=</span>-43 freq<span class="token operator">=</span>2427 
+wlan0:    skip - SSID mismatch
+wlan0: 3: 00:90:4c:1e:50:50 ssid<span class="token operator">=</span><span class="token string">'MIG-Meeting'</span> wpa_ie_len<span class="token operator">=</span>0 rsn_ie_len<span class="token operator">=</span>20 caps<span class="token operator">=</span>0x1411 level<span class="token operator">=</span>-44 freq<span class="token operator">=</span>2432  wps
+wlan0:    skip - SSID mismatch
+wlan0: 4: ce:c2:e0:32:fd:c6 ssid<span class="token operator">=</span><span class="token string">'ChinaNet-wQDu'</span> wpa_ie_len<span class="token operator">=</span>26 rsn_ie_len<span class="token punctuation">[</span>  116.250000<span class="token punctuation">]</span> <span class="token punctuation">[</span>dhd-wlan0<span class="token punctuation">]</span> wl_cfg80211_connect <span class="token keyword">:</span> 1
+<span class="token punctuation">[</span>  116.250000<span class="token punctuation">]</span> 
+<span class="token operator">=</span>24 caps<span class="token operator">=</span>0x411 level<span class="token operator">=</span>-48 freq<span class="token operator">=</span>2412 
+wlan0:    skip - SSID mismatch
+wlan0: 5: 34:2e:b6:70:2a:25 ssid<span class="token operator">=</span><span class="token string">''</span> wpa_ie_len<span class="token operator">=</span>0 rsn_ie_len<span class="token operator">=</span>20 caps<span class="token operator">=</span>0x1431 level<span class="token operator">=</span>-48 freq<span class="token operator">=</span>2462  wps
+wlan0:    skip - SSID not known
+wlan0: 6: a0:63:91:c7:f4:8f ssid<span class="token operator">=</span><span class="token string">'WWNet'</span> wpa_ie_len<span class="token operator">=</span>0 rsn_ie_len<span class="token operator">=</span>20 caps<span class="token operator">=</span>0x1011 level<span class="token operator">=</span>-49 freq<span class="token operator">=</span>2417  wps
+wlan0:    skip - SSID mismatch
+wlan0: 7: 34:2e:b6:70:2a:24 ssid<span class="token operator">=</span><span class="token string">'se.101_24G'</span> wpa_ie_len<span class="token operator">=</span>0 rsn_ie_len<span class="token operator">=</span>20 caps<span class="token operator">=</span>0x1431 level<span class="token operator">=</span>-49 freq<span class="token operator">=</span>2462  wps
+wlan0:    selected based on RSN IE
+wlan0:    selected BSS 34:2e:b6:70:2a:24 ssid<span class="token operator">=</span><span class="token string">'se.101_24G'</span>
+wlan0: Considering connect request: reassociate: 0  selected: 34:2e:b6:70:2a:24  bssid: 00:00:00:00:00:00  pending: 00:00:<span class="token punctuation">)</span>
+wlan0: Request association with 34:2e:b6:70:2a:24
+wlan0: No ongoing scan/p2p-scan found to abort
+wlan0: Add radio work <span class="token string">'connect'</span>@0xae920
+wlan0: First radio work item <span class="token keyword">in</span> the queue - schedule start immediately
+</code></pre>
+<pre><code class="prism language-bash"><span class="token comment"># iperf3 -c 10.0.0.144 -p 1000</span>
+Connecting to host 10.0.0.144, port 1000
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span> local 10.0.0.145 port 54814 connected to 10.0.0.144 port 1000
+<span class="token punctuation">[</span> ID<span class="token punctuation">]</span> Interval           Transfer     Bitrate         Retr  Cwnd
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   0.00-1.01   sec   898 KBytes  7.30 Mbits/sec    0   69.3 KBytes       
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   1.01-2.01   sec   382 KBytes  3.13 Mbits/sec    2   41.0 KBytes       
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   2.01-3.01   sec   764 KBytes  6.25 Mbits/sec    4   33.9 KBytes       
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   3.01-4.01   sec   382 KBytes  3.13 Mbits/sec    2   29.7 KBytes       
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   4.01-5.01   sec   382 KBytes  3.13 Mbits/sec    1   25.5 KBytes       
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   5.01-6.01   sec   382 KBytes  3.13 Mbits/sec    0   35.4 KBytes       
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   6.01-7.01   sec   191 KBytes  1.56 Mbits/sec    2   29.7 KBytes       
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   7.01-8.01   sec   573 KBytes  4.69 Mbits/sec    0   39.6 KBytes       
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   8.01-9.01   sec   573 KBytes  4.69 Mbits/sec    1   38.2 KBytes       
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   9.01-10.01  sec   573 KBytes  4.69 Mbits/sec    0   46.7 KBytes       
+- - - - - - - - - - - - - - - - - - - - - - - - -
+<span class="token punctuation">[</span> ID<span class="token punctuation">]</span> Interval           Transfer     Bitrate         Retr
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   0.00-10.01  sec  4.98 MBytes  4.17 Mbits/sec   12             sender
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   0.00-10.12  sec  4.57 MBytes  3.79 Mbits/sec                  receiver
+
+iperf Done.
+
+<span class="token comment"># iperf3 -u -c 10.0.0.144 -p 1000 -b 1000M</span>
+Connecting to host 10.0.0.144, port 1000
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span> local 10.0.0.145 port 44196 connected to 10.0.0.144 port 1000
+<span class="token punctuation">[</span> ID<span class="token punctuation">]</span> Interval           Transfer     Bitrate         Total Datagrams
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   0.00-1.01   sec  1.26 MBytes  10.5 Mbits/sec  910  
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   1.01-2.01   sec  1.00 MBytes  8.40 Mbits/sec  725  
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   2.01-3.01   sec  1.08 MBytes  9.06 Mbits/sec  782  
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   3.01-4.01   sec   714 KBytes  5.85 Mbits/sec  505  
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   4.01-5.00   sec   918 KBytes  7.54 Mbits/sec  649  
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   5.00-6.01   sec  1.06 MBytes  8.86 Mbits/sec  767  
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   6.01-7.01   sec  1.31 MBytes  11.0 Mbits/sec  948  
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   7.01-8.01   sec  1.12 MBytes  9.41 Mbits/sec  812  
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   8.01-9.01   sec  1.32 MBytes  11.1 Mbits/sec  956  
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   9.01-10.01  sec  1.44 MBytes  12.1 Mbits/sec  1044  
+- - - - - - - - - - - - - - - - - - - - - - - - -
+<span class="token punctuation">[</span> ID<span class="token punctuation">]</span> Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   0.00-10.01  sec  11.2 MBytes  9.38 Mbits/sec  0.000 ms  0/8098 <span class="token punctuation">(</span>0%<span class="token punctuation">)</span>  sender
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   0.00-10.41  sec  5.32 MBytes  4.28 Mbits/sec  3.414 ms  4248/8097 <span class="token punctuation">(</span>52%<span class="token punctuation">)</span>  receiver
+
+iperf Done.
+</code></pre>
+<p><strong>路由器放旁边</strong></p>
+<pre><code class="prism language-bash"><span class="token comment"># iperf3 -c 10.1.1.152 -p 1000</span>
+Connecting to host 10.1.1.152, port 1000
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span> local 10.1.1.198 port 46742 connected to 10.1.1.152 port 1000
+<span class="token punctuation">[</span> ID<span class="token punctuation">]</span> Interval           Transfer     Bitrate         Retr  Cwnd
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   0.00-1.00   sec  1.70 MBytes  14.2 Mbits/sec    0    100 KBytes       
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   1.00-2.00   sec  1.30 MBytes  10.9 Mbits/sec    0    154 KBytes       
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   2.00-3.00   sec  1.86 MBytes  15.6 Mbits/sec    0    240 KBytes       
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   3.00-4.00   sec  1.86 MBytes  15.6 Mbits/sec    0    324 KBytes       
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   4.00-5.00   sec  2.05 MBytes  17.2 Mbits/sec    1    269 KBytes       
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   5.00-6.00   sec  1.49 MBytes  12.5 Mbits/sec    0    297 KBytes       
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   6.00-7.00   sec  1.55 MBytes  13.0 Mbits/sec    3    222 KBytes       
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   7.00-8.00   sec  1.37 MBytes  11.5 Mbits/sec    0    243 KBytes       
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   8.00-9.00   sec  2.05 MBytes  17.2 Mbits/sec    2    129 KBytes       
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   9.00-10.00  sec  1.43 MBytes  12.0 Mbits/sec    0    144 KBytes       
+- - - - - - - - - - - - - - - - - - - - - - - - -
+<span class="token punctuation">[</span> ID<span class="token punctuation">]</span> Interval           Transfer     Bitrate         Retr
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   0.00-10.00  sec  16.7 MBytes  14.0 Mbits/sec    6             sender
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   0.00-10.12  sec  15.4 MBytes  12.7 Mbits/sec                  receiver
+
+iperf Done.
+<span class="token comment"># </span>
+<span class="token comment"># iperf3 -u -c 10.1.1.152 -p 1000 -b 1000M</span>
+Connecting to host 10.1.1.152, port 1000
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span> local 10.1.1.198 port 54850 connected to 10.1.1.152 port 1000
+<span class="token punctuation">[</span> ID<span class="token punctuation">]</span> Interval           Transfer     Bitrate         Total Datagrams
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   0.00-1.00   sec  2.44 MBytes  20.3 Mbits/sec  1764  
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   1.00-2.00   sec  2.21 MBytes  18.6 Mbits/sec  1603  
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   2.00-3.00   sec  2.42 MBytes  20.3 Mbits/sec  1751  
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   3.00-4.00   sec  2.11 MBytes  17.8 Mbits/sec  1528  
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   4.00-5.00   sec   956 KBytes  7.83 Mbits/sec  676  
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   5.00-6.00   sec  1.81 MBytes  15.1 Mbits/sec  1311  
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   6.00-7.00   sec  1.89 MBytes  15.9 Mbits/sec  1369  
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   7.00-8.00   sec  3.61 MBytes  30.4 Mbits/sec  2615  
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   8.00-9.00   sec  3.72 MBytes  31.3 Mbits/sec  2697  
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   9.00-10.00  sec  3.43 MBytes  28.8 Mbits/sec  2482  
+- - - - - - - - - - - - - - - - - - - - - - - - -
+<span class="token punctuation">[</span> ID<span class="token punctuation">]</span> Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   0.00-10.00  sec  24.6 MBytes  20.6 Mbits/sec  0.000 ms  0/17796 <span class="token punctuation">(</span>0%<span class="token punctuation">)</span>  sender
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   0.00-10.79  sec  21.1 MBytes  16.4 Mbits/sec  0.694 ms  2517/17794 <span class="token punctuation">(</span>14%<span class="token punctuation">)</span>  receiver
+
+iperf Done.
+</code></pre>
+<h4><a id="1011__692"></a>10.1.1 外置天线</h4>
+<pre><code class="prism language-bash">wlan0: New scan results available <span class="token punctuation">(</span>own<span class="token operator">=</span>1 ext<span class="token operator">=</span>0<span class="token punctuation">)</span>
+wlan0: Radio work <span class="token string">'scan'</span>@0xae920 <span class="token keyword">done</span> <span class="token keyword">in</span> 1.149694 seconds
+wlan0: radio_work_free<span class="token punctuation">(</span><span class="token string">'scan'</span>@0xae920<span class="token punctuation">)</span>: num_active_works --<span class="token operator">&gt;</span> 0
+wlan0: Selecting BSS from priority group 0
+wlan0: 0: 8c:de:f9:e2:f9:ba ssid<span class="token operator">=</span><span class="token string">'STU-EE'</span> wpa_ie_len<span class="token operator">=</span>0 rsn_ie_len<span class="token operator">=</span>20 caps<span class="token operator">=</span>0x431 level<span class="token operator">=</span>-29 freq<span class="token operator">=</span>2437  wps
+wlan0:    skip - SSID mismatch
+wlan0: 1: a0:ec:f9:9f:41:31 ssid<span class="token operator">=</span><span class="token string">'seeed-guest'</span> wpa_ie_len<span class="token operator">=</span>0 rsn_ie_len<span class="token operator">=</span>20 caps<span class="token operator">=</span>0x1431 level<span class="token operator">=</span>-39 freq<span class="token operator">=</span>2427 
+wlan0:    skip - SSID mismatch
+wlan0: 2: a0:ec:f9:9f:41:30 ssid<span class="token operator">=</span><span class="token string">'SEEED-MKT'</span> wpa_ie_len<span class="token operator">=</span>0 rsn_ie_len<span class="token operator">=</span>20 caps<span class="token operator">=</span>0x1431 level<span class="token operator">=</span>-42 freq<span class="token operator">=</span>2427 
+wlan0:    skip - SSID mismatch
+wlan0: 3: a0:63:91:c7:f4:8f ssid<span class="token operator">=</span><span class="token string">'WWNet'</span> wpa_ie_len<span class="token operator">=</span>0 rsn_ie_len<span class="token operator">=</span>20 caps<span class="token operator">=</span>0x1011 level<span class="token operator">=</span>-46 freq<span class="token operator">=</span>2417  wps
+wlan0:    skip - SSID mismatch
+wlan0: 4: 00:90:4c:1e:50:50 ssid<span class="token operator">=</span><span class="token string">'MIG-Meeting'</span> wpa_ie_len<span class="token operator">=</span>0 rsn_ie_len<span class="token operator">=</span>20 caps<span class="token operator">=</span>0x1411 level<span class="token operator">=</span>-48 freq<span class="token operator">=</span>2432  wps
+wlan<span class="token punctuation">[</span>   60.590000<span class="token punctuation">]</span> <span class="token punctuation">[</span>dhd-wlan0<span class="token punctuation">]</span> wl_cfg80211_connect <span class="token keyword">:</span> Connecting with 34:2e:b6:70:2a:24 ssid <span class="token string">"se.101_24G"</span>, len <span class="token punctuation">(</span>10<span class="token punctuation">)</span>, sec<span class="token operator">=</span>wp1
+<span class="token punctuation">[</span>   60.590000<span class="token punctuation">]</span> 
+0:    skip - SSID mismatch
+wlan0: 5: ec:17:2f:f2:d8:58 ssid<span class="token operator">=</span><span class="token string">'seeed_test_2g'</span> wpa_ie_len<span class="token operator">=</span>0 rsn_ie_len<span class="token operator">=</span>20 caps<span class="token operator">=</span>0x411 level<span class="token operator">=</span>-49 freq<span class="token operator">=</span>2412 
+wlan0:    skip - SSID mismatch
+wlan0: 6: 20:76:93:44:8f:ba ssid<span class="token operator">=</span><span class="token string">'LaowaiNet2G'</span> wpa_ie_len<span class="token operator">=</span>0 rsn_ie_len<span class="token operator">=</span>20 caps<span class="token operator">=</span>0x431 level<span class="token operator">=</span>-49 freq<span class="token operator">=</span>2417 
+wlan0:    skip - SSID mismatch
+wlan0: 7: 94:83:c4:05:c3:d2 ssid<span class="token operator">=</span><span class="token string">'qunanan'</span> wpa_ie_len<span class="token operator">=</span>0 rsn_ie_len<span class="token operator">=</span>20 caps<span class="token operator">=</span>0x11 level<span class="token operator">=</span>-53 freq<span class="token operator">=</span>2462 
+wlan0:    skip - SSID mismatch
+wlan0: 8: 34:2e:b6:70:2a:24 ssid<span class="token operator">=</span><span class="token string">'se.101_24G'</span> wpa_ie_len<span class="token operator">=</span>0 rsn_ie_len<span class="token operator">=</span>20 caps<span class="token operator">=</span>0x1431 level<span class="token operator">=</span>-53 freq<span class="token operator">=</span>2462  wps
+wlan0:    selected based on RSN IE
+wlan0:    selected BSS 34:2e:b6:70:2a:24 ssid<span class="token operator">=</span><span class="token string">'se.101_24G'</span>
+wlan0: Considering connect request: reassociate: 0  selected: 34:2e:b6:70:2a:24  bssid: 00:00:00:00:00:00  pending: 00:00:<span class="token punctuation">)</span>
+wlan0: Request association with 34:2e:b6:70:2a:24
+wlan0: No ongoing scan/p2p-scan found to abort
+wlan0: Add radio work <span class="token string">'connect'</span>@0xae920
+wlan0: First radio work item <span class="token keyword">in</span> the queue - schedule start immediately
+RSN: Ignored PMKID candidate without preauth flag
+wlan0: Starting radio work <span class="token string">'connect'</span>@0xae920 after 0.000108 second <span class="token function">wait</span>
+wlan0: Trying to associate with SSID <span class="token string">'se.101_24G'</span>
+wlan0: Cancelling scan request
+wlan0: WPA: clearing own WPA/RSN IE
+</code></pre>
+<pre><code class="prism language-bash"><span class="token comment"># iperf3 -c 10.1.1.152 -p 1000</span>
+Connecting to host 10.1.1.152, port 1000
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span> local 10.1.1.174 port 34270 connected to 10.1.1.152 port 1000
+<span class="token punctuation">[</span> ID<span class="token punctuation">]</span> Interval           Transfer     Bitrate         Retr  Cwnd
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   0.00-1.01   sec  1.47 MBytes  12.2 Mbits/sec    0   99.0 KBytes       
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   1.01-2.01   sec  1.49 MBytes  12.5 Mbits/sec    0    160 KBytes       
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   2.01-3.01   sec  1.80 MBytes  15.1 Mbits/sec    0    232 KBytes       
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   3.01-4.01   sec  2.36 MBytes  19.8 Mbits/sec    0    327 KBytes       
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   4.01-5.01   sec   891 KBytes  7.30 Mbits/sec    1    281 KBytes       
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   5.01-6.02   sec  2.67 MBytes  22.2 Mbits/sec    0    311 KBytes       
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   6.02-7.01   sec   827 KBytes  6.84 Mbits/sec    0    341 KBytes       
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   7.01-8.01   sec  1.62 MBytes  13.6 Mbits/sec    0    362 KBytes       
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   8.01-9.01   sec  1.55 MBytes  13.0 Mbits/sec    0    375 KBytes       
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   9.01-10.01  sec  1.55 MBytes  13.0 Mbits/sec    1    264 KBytes       
+- - - - - - - - - - - - - - - - - - - - - - - - -
+<span class="token punctuation">[</span> ID<span class="token punctuation">]</span> Interval           Transfer     Bitrate         Retr
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   0.00-10.01  sec  16.2 MBytes  13.6 Mbits/sec    2             sender
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   0.00-10.19  sec  14.9 MBytes  12.3 Mbits/sec                  receiver
+
+iperf Done.
+<span class="token comment"># </span>
+<span class="token comment"># iperf3 -c 10.1.1.152 -p 1000 -b 1000M</span>
+Connecting to host 10.1.1.152, port 1000
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span> local 10.1.1.174 port 34274 connected to 10.1.1.152 port 1000
+<span class="token punctuation">[</span> ID<span class="token punctuation">]</span> Interval           Transfer     Bitrate         Retr  Cwnd
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   0.00-1.00   sec  1.60 MBytes  13.4 Mbits/sec    0    107 KBytes       
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   1.00-2.00   sec  1.50 MBytes  12.5 Mbits/sec    0    175 KBytes       
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   2.00-3.00   sec  1.75 MBytes  14.7 Mbits/sec    2    161 KBytes       
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   3.00-4.00   sec  1.25 MBytes  10.5 Mbits/sec    0    194 KBytes       
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   4.00-5.00   sec  1.50 MBytes  12.6 Mbits/sec    0    214 KBytes       
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   5.00-6.00   sec  1.50 MBytes  12.6 Mbits/sec    1    157 KBytes       
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   6.00-7.00   sec  1.38 MBytes  11.5 Mbits/sec    2    122 KBytes       
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   7.00-8.00   sec  1.38 MBytes  11.5 Mbits/sec    0    137 KBytes       
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   8.00-9.00   sec  1.62 MBytes  13.6 Mbits/sec    0    143 KBytes       
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   9.00-10.00  sec  1.62 MBytes  13.7 Mbits/sec    0    144 KBytes       
+- - - - - - - - - - - - - - - - - - - - - - - - -
+<span class="token punctuation">[</span> ID<span class="token punctuation">]</span> Interval           Transfer     Bitrate         Retr
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   0.00-10.00  sec  15.1 MBytes  12.7 Mbits/sec    5             sender
+<span class="token punctuation">[</span>  5<span class="token punctuation">]</span>   0.00-10.15  sec  14.3 MBytes  11.9 Mbits/sec                  receiver
+
+iperf Done.
+</code></pre>
+<h3><a id="102_AP_774"></a>10.2 AP模式</h3>
+<pre><code class="prism language-bash"><span class="token keyword">echo</span> -n <span class="token string">"/etc/firmware/fw_bcm43436b0_apsta.bin"</span> <span class="token operator">&gt;</span> /sys/module/bcmdhd/parameters/firmware_path
+</code></pre>
+<p>修改文件：/etc/hostapd.conf</p>
+<pre><code class="prism language-bash">interface<span class="token operator">=</span>wlan0
+driver<span class="token operator">=</span>nl80211
+ctrl_interface<span class="token operator">=</span>/var/run/hostapd
+ssid<span class="token operator">=</span>AndroidAP
+channel<span class="token operator">=</span>6
+ieee80211n<span class="token operator">=</span>1
+hw_mode<span class="token operator">=</span>g
+ignore_broadcast_ssid<span class="token operator">=</span>0
+wpa<span class="token operator">=</span>2
+rsn_pairwise<span class="token operator">=</span>CCMP
+wpa_passphrase<span class="token operator">=</span>12345678
+</code></pre>
+<pre><code class="prism language-bash"><span class="token function">cd</span> /etc/
+hostapd hostapd.conf <span class="token operator">&amp;</span>
+<span class="token comment"># Configuration file: hostapd.conf</span>
+rfkill: Cannot <span class="token function">open</span> RFKILL control device
+<span class="token punctuation">[</span>  112.620000<span class="token punctuation">]</span> <span class="token punctuation">[</span>dhd-wlan0<span class="token punctuation">]</span> wl_cfg80211_del_station <span class="token keyword">:</span> Disconnect STA <span class="token keyword">:</span> 66:66:3a:66:66:3a scb_val.val 3
+Using interface wlan0 with hwaddr 10:2c:6b:a9:6e:fe and ssid <span class="token string">"AndroidAP"</span>
+random: Only 15/20 bytes of strong random data available from /d<span class="token punctuation">[</span>  112.740000<span class="token punctuation">]</span> <span class="token punctuation">[</span>dhd<span class="token punctuation">]</span> dhd_wl_ioctl_set_intiovar: <span class="token keyword">set</span> int io3
+ev/random
+random: Not enough entropy pool available <span class="token keyword">for</span> secure <span class="token punctuation">[</span>  112.750000<span class="token punctuation">]</span> <span class="token punctuation">[</span>dhd<span class="token punctuation">]</span> dhd_ndo_enable: failed to enabe ndo to 0, retcod3
+operations
+WPA: Not enough entropy <span class="token keyword">in</span> random pool <span class="token keyword">for</span> secure op<span class="token punctuation">[</span>  112.760000<span class="token punctuation">]</span> <span class="token punctuation">[</span>dhd<span class="token punctuation">]</span> CFG80211-ERROR<span class="token punctuation">)</span> wl_cfg80211_start_ap <span class="token keyword">:</span> Disabling 3
+erations - update keys later when the first station connects
+<span class="token punctuation">[</span>  112.780000<span class="token punctuation">]</span> <span class="token punctuation">[</span>dhd-wlan0<span class="token punctuation">]</span> wl_cfg80211_set_channel <span class="token keyword">:</span> netdev_ifidx<span class="token punctuation">(</span>4<span class="token punctuation">)</span>, chan_type<span class="token punctuation">(</span>1<span class="token punctuation">)</span> target channel<span class="token punctuation">(</span>6<span class="token punctuation">)</span> 
+<span class="token punctuation">[</span>  112.800000<span class="token punctuation">]</span> <span class="token punctuation">[</span>dhd<span class="token punctuation">]</span> CFG80211-ERROR<span class="token punctuation">)</span> wl_cfg80211_parse_ies <span class="token keyword">:</span> No WPSIE <span class="token keyword">in</span> beacon 
+<span class="token punctuation">[</span>  112.810000<span class="token punctuation">]</span> <span class="token punctuation">[</span>dhd<span class="token punctuation">]</span> CFG80211-ERROR<span class="token punctuation">)</span> wl_cfg80211_parse_ies <span class="token keyword">:</span> No WPSIE <span class="token keyword">in</span> beacon 
+<span class="token punctuation">[</span>  112.820000<span class="token punctuation">]</span> <span class="token punctuation">[</span>dhd-wlan0<span class="token punctuation">]</span> wl_cfg80211_bcn_bringup_ap <span class="token keyword">:</span> Creating AP with sec<span class="token operator">=</span>wpa2psk/mfpn/0x44
+<span class="token punctuation">[</span>  112.910000<span class="token punctuation">]</span> <span class="token punctuation">[</span>dhd-wlan0<span class="token punctuation">]</span> wl_ext_iapsta_event <span class="token keyword">:</span> <span class="token punctuation">[</span>A<span class="token punctuation">]</span> Link up w/o creating? <span class="token punctuation">(</span>etype<span class="token operator">=</span>16<span class="token punctuation">)</span>
+<span class="token punctuation">[</span>  112.910000<span class="token punctuation">]</span> <span class="token punctuation">[</span>dhd-wlan0<span class="token punctuation">]</span> wl_notify_connect_status_ap <span class="token keyword">:</span> AP/GO Link up
+<span class="token punctuation">[</span>  112.930000<span class="token punctuation">]</span> <span class="token punctuation">[</span>dhd-wlan0<span class="token punctuation">]</span> wl_ext_iapsta_event <span class="token keyword">:</span> <span class="token punctuation">[</span>A<span class="token punctuation">]</span> Link up w/o creating? <span class="token punctuation">(</span>etype<span class="token operator">=</span>16<span class="token punctuation">)</span>
+wlan0: interface state UNINITIALIZED-<span class="token operator">&gt;</span>ENABLED
+wlan0: AP-ENABLED 
+</code></pre>
+<pre><code class="prism language-bash"><span class="token function">ifconfig</span>
+wlan0     Link encap:Ethernet  HWaddr 10:2C:6B:A9:6E:FE  
+          inet addr:169.254.136.232  Bcast:169.254.255.255  Mask:255.255.0.0
+          inet6 addr: fe80::38f6:5845:147:e764/64 Scope:Link
+          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
+          RX packets:0 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:23 errors:0 dropped:0 overruns:0 carrier:0
+          collisions:0 txqueuelen:1000 
+          RX bytes:0 <span class="token punctuation">(</span>0.0 B<span class="token punctuation">)</span>  TX bytes:3538 <span class="token punctuation">(</span>3.4 KiB<span class="token punctuation">)</span>
+</code></pre>
+<p><img src="https://img-blog.csdnimg.cn/20210225193923728.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZpbmRtdQ==,size_16,color_FFFFFF,t_70" alt="在这里插入图片描述"><br>
+<img src="https://img-blog.csdnimg.cn/20210225193936944.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZpbmRtdQ==,size_16,color_FFFFFF,t_70" alt="在这里插入图片描述"></p>
+<pre><code class="prism language-bash"><span class="token function">ping</span> 169.254.17.237
+PING 169.254.17.237 <span class="token punctuation">(</span>169.254.17.237<span class="token punctuation">)</span>: 56 data bytes
+64 bytes from 169.254.17.237: seq<span class="token operator">=</span>0 ttl<span class="token operator">=</span>128 time<span class="token operator">=</span>16.306 ms
+64 bytes from 169.254.17.237: seq<span class="token operator">=</span>1 ttl<span class="token operator">=</span>128 time<span class="token operator">=</span>11.510 ms
+64 bytes from 169.254.17.237: seq<span class="token operator">=</span>2 ttl<span class="token operator">=</span>128 time<span class="token operator">=</span>11.897 ms
+64 bytes from 169.254.17.237: seq<span class="token operator">=</span>3 ttl<span class="token operator">=</span>128 time<span class="token operator">=</span>14.034 ms
+64 bytes from 169.254.17.237: seq<span class="token operator">=</span>4 ttl<span class="token operator">=</span>128 time<span class="token operator">=</span>14.554 ms
+64 bytes from 169.254.17.237: seq<span class="token operator">=</span>5 ttl<span class="token operator">=</span>128 time<span class="token operator">=</span>11.487 ms
+64 bytes from 169.254.17.237: seq<span class="token operator">=</span>6 ttl<span class="token operator">=</span>128 time<span class="token operator">=</span>14.114 ms
+64 bytes from 169.254.17.237: seq<span class="token operator">=</span>7 ttl<span class="token operator">=</span>128 time<span class="token operator">=</span>11.546 ms
+^C
+--- 169.254.17.237 <span class="token function">ping</span> statistics ---
+8 packets transmitted, 8 packets received, 0% packet loss
+round-trip min/avg/max <span class="token operator">=</span> 11.487/13.181/16.306 ms
+</code></pre>
+<h2><a id="11_DSI_846"></a>11. DSI测试</h2>
+<p>液晶屏：树莓派官方7寸屏，分辨率：800x480<br>
+Camera：Raspberry Pi Camera V2.1</p>
+<h3><a id="111_Terminal_849"></a>11.1 显示Terminal</h3>
+<p>修改代码：</p>
+<pre><code class="prism language-bash">lmde@vb:/work/sf/beagle_freedeom_u_sdk/linux$ <span class="token function">git</span> <span class="token function">diff</span>
+<span class="token function">diff</span> --git a/drivers/video/fbdev/starfive/starfive_fb.c b/drivers/video/fbdev/starfive/starfive_fb.c
+index 91f91d444<span class="token punctuation">..</span>6cfd7ad21 100755
+--- a/drivers/video/fbdev/starfive/starfive_fb.c
++++ b/drivers/video/fbdev/starfive/starfive_fb.c
+@@ -1069,7 +1069,8 @@ static int starfive_fb_probe<span class="token punctuation">(</span>struct platform_device *pdev<span class="token punctuation">)</span>
+                <span class="token keyword">return</span> ret<span class="token punctuation">;</span>
+        <span class="token punctuation">}</span>
+ 
+-       sf_dev-<span class="token operator">&gt;</span>dis_dev_name <span class="token operator">=</span> <span class="token string">"tda_998x_1080p"</span><span class="token punctuation">;</span>
++       //sf_dev-<span class="token operator">&gt;</span>dis_dev_name <span class="token operator">=</span> <span class="token string">"tda_998x_1080p"</span><span class="token punctuation">;</span>
++       sf_dev-<span class="token operator">&gt;</span>dis_dev_name <span class="token operator">=</span> <span class="token string">"seeed_5_inch"</span><span class="token punctuation">;</span>
+        sf_dev-<span class="token operator">&gt;</span>cmap_inverse <span class="token operator">=</span> 0<span class="token punctuation">;</span>
+        sf_dev-<span class="token operator">&gt;</span>cmap_static <span class="token operator">=</span> 0<span class="token punctuation">;</span>
+        sf_dev-<span class="token operator">&gt;</span>dev <span class="token operator">=</span> <span class="token operator">&amp;</span>pdev-<span class="token operator">&gt;</span>dev<span class="token punctuation">;</span>
+
+</code></pre>
+<p>① 测试第三方屏<br>
+log信息：</p>
+<pre><code class="prism language-bash"><span class="token punctuation">[</span>    0.560000<span class="token punctuation">]</span> clocksource: Switched to clocksource riscv_clocksource
+<span class="token punctuation">[</span>    0.560000<span class="token punctuation">]</span> seeed_panel 2-0045: seeed_panel_probe<span class="token punctuation">[</span>167<span class="token punctuation">]</span>,reg<span class="token punctuation">[</span>0x80<span class="token punctuation">]</span> <span class="token operator">=</span> 0xc3
+<span class="token punctuation">[</span>    0.580000<span class="token punctuation">]</span> <span class="token punctuation">[</span>MIPI<span class="token punctuation">]</span>: imx219_probe enter
+<span class="token punctuation">[</span>    1.350000<span class="token punctuation">]</span> imx219_read_reg:write reg error:reg<span class="token operator">=</span>0,valrtn<span class="token operator">=</span>-121
+<span class="token punctuation">[</span>    1.360000<span class="token punctuation">]</span> imx219_read_reg:write reg error:reg<span class="token operator">=</span>1,valrtn<span class="token operator">=</span>-121
+<span class="token punctuation">[</span>    1.360000<span class="token punctuation">]</span> <span class="token punctuation">[</span>MIPI<span class="token punctuation">]</span>: raspi_cam_v2 failed to power up<span class="token operator">!</span>
+<span class="token punctuation">[</span>    1.370000<span class="token punctuation">]</span> <span class="token punctuation">[</span>MIPI<span class="token punctuation">]</span>: failed to <span class="token function">open</span> sensor
+</code></pre>
+<p><img src="https://img-blog.csdnimg.cn/20210305152352388.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZpbmRtdQ==,size_16,color_FFFFFF,t_70" alt="在这里插入图片描述"><br>
+② 测试官方屏<br>
+log信息：</p>
+<pre><code class="prism language-bash"><span class="token punctuation">[</span>    0.560000<span class="token punctuation">]</span> clocksource: Switched to clocksource riscv_clocksource
+<span class="token punctuation">[</span>    0.560000<span class="token punctuation">]</span> seeed_panel 2-0045: seeed_panel_probe<span class="token punctuation">[</span>167<span class="token punctuation">]</span>,reg<span class="token punctuation">[</span>0x80<span class="token punctuation">]</span> <span class="token operator">=</span> 0xc3
+<span class="token punctuation">[</span>    0.600000<span class="token punctuation">]</span> seeed_panel 2-0045: seeed panel i2c <span class="token function">read</span> reg<span class="token punctuation">(</span>0x82 val:0xc3<span class="token punctuation">)</span> failed,ret <span class="token operator">=</span> -121 <span class="token operator">!</span>
+<span class="token punctuation">[</span>    0.600000<span class="token punctuation">]</span> seeed_panel 2-0045: seeed panel i2c <span class="token function">write</span> reg<span class="token punctuation">(</span>0x81 val:0x4<span class="token punctuation">)</span> failed <span class="token operator">!</span>
+<span class="token punctuation">[</span>    0.620000<span class="token punctuation">]</span> <span class="token punctuation">[</span>MIPI<span class="token punctuation">]</span>: imx219_probe enter
+<span class="token punctuation">[</span>    1.390000<span class="token punctuation">]</span> imx219_read_reg:write reg error:reg<span class="token operator">=</span>0,valrtn<span class="token operator">=</span>-121
+<span class="token punctuation">[</span>    1.400000<span class="token punctuation">]</span> imx219_read_reg:write reg error:reg<span class="token operator">=</span>1,valrtn<span class="token operator">=</span>-121
+<span class="token punctuation">[</span>    1.400000<span class="token punctuation">]</span> <span class="token punctuation">[</span>MIPI<span class="token punctuation">]</span>: raspi_cam_v2 failed to power up<span class="token operator">!</span>
+<span class="token punctuation">[</span>    1.410000<span class="token punctuation">]</span> <span class="token punctuation">[</span>MIPI<span class="token punctuation">]</span>: failed to <span class="token function">open</span> sensor
+<span class="token punctuation">[</span>    1.410000<span class="token punctuation">]</span> NET: Registered protocol family 2
+<span class="token punctuation">[</span>    1.420000<span class="token punctuation">]</span> tcp_listen_portaddr_hash <span class="token function">hash</span> table entries: 4096 <span class="token punctuation">(</span>order: 4, 65536 bytes<span class="token punctuation">)</span>
+</code></pre>
+<p><img src="https://img-blog.csdnimg.cn/20210305153525793.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZpbmRtdQ==,size_16,color_FFFFFF,t_70" alt="在这里插入图片描述"></p>
+<h3><a id="112_CSI0J1_897"></a>11.2 CSI0（J1接口）</h3>
+<p>修改代码：</p>
+<pre><code class="prism language-bash">lmde@vb:/work/sf/beagle_freedeom_u_sdk/HiFive_U-Boot$ <span class="token function">git</span> <span class="token function">diff</span>
+<span class="token function">diff</span> --git a/arch/riscv/dts/hifive_u74_nvdla_iofpga.dts b/arch/riscv/dts/hifive_u74_nvdla_iofpga.dts
+index 6abc008<span class="token punctuation">..</span>1e26844 100755
+--- a/arch/riscv/dts/hifive_u74_nvdla_iofpga.dts
++++ b/arch/riscv/dts/hifive_u74_nvdla_iofpga.dts
+@@ -357,6 +357,12 @@
+                                compatible <span class="token operator">=</span> <span class="token string">"seeed_panel"</span><span class="token punctuation">;</span>
+                                reg <span class="token operator">=</span> <span class="token operator">&lt;</span>0x45<span class="token operator">&gt;</span><span class="token punctuation">;</span>
+                        <span class="token punctuation">}</span><span class="token punctuation">;</span>
++                       
++                       imx219@10 <span class="token punctuation">{</span>
++                               compatible <span class="token operator">=</span> <span class="token string">"imx219"</span><span class="token punctuation">;</span>
++                               reg <span class="token operator">=</span> <span class="token operator">&lt;</span>0x10<span class="token operator">&gt;</span><span class="token punctuation">;</span>
++                               reset-gpio <span class="token operator">=</span> <span class="token operator">&lt;</span><span class="token operator">&amp;</span>gpio 57 0<span class="token operator">&gt;</span><span class="token punctuation">;</span>
++                       <span class="token punctuation">}</span><span class="token punctuation">;</span>
+                <span class="token punctuation">}</span><span class="token punctuation">;</span>
+ 
+                trng: trng@118d0000 <span class="token punctuation">{</span>
+@@ -607,7 +613,7 @@
+                        status <span class="token operator">=</span> <span class="token string">"okay"</span><span class="token punctuation">;</span>
+                        ddr-format <span class="token operator">=</span> <span class="token operator">&lt;</span>WIN_FMT_RGB565<span class="token operator">&gt;</span><span class="token punctuation">;</span>/*LCDC win_format*/
+ 
+-                       /*pp1 <span class="token punctuation">{</span>
++                       pp1 <span class="token punctuation">{</span>
+                                pp-id <span class="token operator">=</span> <span class="token operator">&lt;</span>1<span class="token operator">&gt;</span><span class="token punctuation">;</span>
+                                fifo-out<span class="token punctuation">;</span>
+                                src-format <span class="token operator">=</span> <span class="token operator">&lt;</span>COLOR_YUV420_NV21<span class="token operator">&gt;</span><span class="token punctuation">;</span>
+@@ -616,7 +622,7 @@
+                                dst-format <span class="token operator">=</span> <span class="token operator">&lt;</span>COLOR_RGB888_ARGB<span class="token operator">&gt;</span><span class="token punctuation">;</span>
+                                dst-width <span class="token operator">=</span> <span class="token operator">&lt;</span>800<span class="token operator">&gt;</span><span class="token punctuation">;</span>
+                                dst-height <span class="token operator">=</span> <span class="token operator">&lt;</span>480<span class="token operator">&gt;</span><span class="token punctuation">;</span>
+-                       <span class="token punctuation">}</span><span class="token punctuation">;</span>*/
++                       <span class="token punctuation">}</span><span class="token punctuation">;</span>
+                <span class="token punctuation">}</span><span class="token punctuation">;</span>
+ 
+                vin_sysctl:vin_sysctl@19800000 <span class="token punctuation">{</span>
+
+</code></pre>
+<pre><code class="prism language-bash">lmde@vb:/work/sf/beagle_freedeom_u_sdk/linux$ <span class="token function">git</span> <span class="token function">diff</span>
+<span class="token function">diff</span> --git a/drivers/video/fbdev/starfive/starfive_fb.c b/drivers/video/fbdev/starfive/starfive_fb.c
+index 91f91d444<span class="token punctuation">..</span>81e635604 100755
+--- a/drivers/video/fbdev/starfive/starfive_fb.c
++++ b/drivers/video/fbdev/starfive/starfive_fb.c
+@@ -1041,7 +1041,7 @@ static int sf_fb_parse_dt<span class="token punctuation">(</span>struct device *dev, struct sf_fb_data *sf_dev<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+        <span class="token keyword">return</span> ret<span class="token punctuation">;</span>
+ <span class="token punctuation">}</span>
+ 
+-//<span class="token comment">#define FB_BUFF_VIN</span>
++<span class="token comment">#define FB_BUFF_VIN</span>
+ 
+ static int starfive_fb_probe<span class="token punctuation">(</span>struct platform_device *pdev<span class="token punctuation">)</span>
+ <span class="token punctuation">{</span>
+@@ -1069,7 +1069,8 @@ static int starfive_fb_probe<span class="token punctuation">(</span>struct platform_device *pdev<span class="token punctuation">)</span>
+                <span class="token keyword">return</span> ret<span class="token punctuation">;</span>
+        <span class="token punctuation">}</span>
+ 
+-       sf_dev-<span class="token operator">&gt;</span>dis_dev_name <span class="token operator">=</span> <span class="token string">"tda_998x_1080p"</span><span class="token punctuation">;</span>
++       //sf_dev-<span class="token operator">&gt;</span>dis_dev_name <span class="token operator">=</span> <span class="token string">"tda_998x_1080p"</span><span class="token punctuation">;</span>
++       sf_dev-<span class="token operator">&gt;</span>dis_dev_name <span class="token operator">=</span> <span class="token string">"seeed_5_inch"</span><span class="token punctuation">;</span>
+        sf_dev-<span class="token operator">&gt;</span>cmap_inverse <span class="token operator">=</span> 0<span class="token punctuation">;</span>
+        sf_dev-<span class="token operator">&gt;</span>cmap_static <span class="token operator">=</span> 0<span class="token punctuation">;</span>
+        sf_dev-<span class="token operator">&gt;</span>dev <span class="token operator">=</span> <span class="token operator">&amp;</span>pdev-<span class="token operator">&gt;</span>dev<span class="token punctuation">;</span>
+
+</code></pre>
+<p><img src="https://img-blog.csdnimg.cn/2021030516200290.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZpbmRtdQ==,size_16,color_FFFFFF,t_70" alt="在这里插入图片描述"></p>
+<h3><a id="113_CSI1J2_966"></a>11.3 CSI1（J2接口）</h3>
+<p>修改代码：</p>
+<pre><code class="prism language-bash">                vin_sysctl:vin_sysctl@19800000 <span class="token punctuation">{</span>
+@@ -642,6 +648,7 @@
+                        frame-height <span class="token operator">=</span><span class="token operator">&lt;</span>480<span class="token operator">&gt;</span><span class="token punctuation">;</span>
+                        isp0_enable<span class="token punctuation">;</span>
+                        csi-lane <span class="token operator">=</span> <span class="token operator">&lt;</span>2<span class="token operator">&gt;</span><span class="token punctuation">;</span>
++               <span class="token comment">#if 0</span>
+                        csi-dlane-swaps <span class="token operator">=</span> /bits/ 8 <span class="token operator">&lt;</span>1<span class="token operator">&gt;</span>,/bits/ 8 <span class="token operator">&lt;</span>2<span class="token operator">&gt;</span>,/bits/ 8 <span class="token operator">&lt;</span>3<span class="token operator">&gt;</span>,/bits/ 8 <span class="token operator">&lt;</span>4<span class="token operator">&gt;</span><span class="token punctuation">;</span>
+                        csi-dlane-pn-swaps  <span class="token operator">=</span> /bits/ 8 <span class="token operator">&lt;</span>0<span class="token operator">&gt;</span>,/bits/ 8 <span class="token operator">&lt;</span>0<span class="token operator">&gt;</span>,/bits/ 8 <span class="token operator">&lt;</span>0<span class="token operator">&gt;</span>,/bits/ 8 <span class="token operator">&lt;</span>0<span class="token operator">&gt;</span><span class="token punctuation">;</span>
+                        csi-clane-swap <span class="token operator">=</span> /bits/ 8 <span class="token operator">&lt;</span>0<span class="token operator">&gt;</span><span class="token punctuation">;</span>
+@@ -650,7 +657,16 @@
+                        csi-width <span class="token operator">=</span> <span class="token operator">&lt;</span>1920<span class="token operator">&gt;</span><span class="token punctuation">;</span>
+                        csi-height <span class="token operator">=</span> <span class="token operator">&lt;</span>1080<span class="token operator">&gt;</span><span class="token punctuation">;</span>
+                        csi-dt <span class="token operator">=</span> <span class="token operator">&lt;</span>0x2b<span class="token operator">&gt;</span><span class="token punctuation">;</span>
+-
++               <span class="token comment">#else</span>
++                       csi-dlane-swaps <span class="token operator">=</span> /bits/ 8 <span class="token operator">&lt;</span>3<span class="token operator">&gt;</span>,/bits/ 8 <span class="token operator">&lt;</span>4<span class="token operator">&gt;</span>,/bits/ 8 <span class="token operator">&lt;</span>1<span class="token operator">&gt;</span>,/bits/ 8 <span class="token operator">&lt;</span>2<span class="token operator">&gt;</span><span class="token punctuation">;</span>
++                       csi-dlane-pn-swaps  <span class="token operator">=</span> /bits/ 8 <span class="token operator">&lt;</span>1<span class="token operator">&gt;</span>,/bits/ 8 <span class="token operator">&lt;</span>0<span class="token operator">&gt;</span>,/bits/ 8 <span class="token operator">&lt;</span>0<span class="token operator">&gt;</span>,/bits/ 8 <span class="token operator">&lt;</span>0<span class="token operator">&gt;</span><span class="token punctuation">;</span>
++                       csi-clane-swap <span class="token operator">=</span> /bits/ 8 <span class="token operator">&lt;</span>5<span class="token operator">&gt;</span><span class="token punctuation">;</span>
++                       csi-clane-pn-swap <span class="token operator">=</span> /bits/ 8 <span class="token operator">&lt;</span>0<span class="token operator">&gt;</span><span class="token punctuation">;</span>
++                       csi-mipiID <span class="token operator">=</span> <span class="token operator">&lt;</span>0<span class="token operator">&gt;</span><span class="token punctuation">;</span>
++                       csi-width <span class="token operator">=</span> <span class="token operator">&lt;</span>1920<span class="token operator">&gt;</span><span class="token punctuation">;</span>
++                       csi-height <span class="token operator">=</span> <span class="token operator">&lt;</span>1080<span class="token operator">&gt;</span><span class="token punctuation">;</span>
++                       csi-dt <span class="token operator">=</span> <span class="token operator">&lt;</span>0x2b<span class="token operator">&gt;</span><span class="token punctuation">;</span>
++               <span class="token comment">#endif</span>
+                <span class="token punctuation">}</span><span class="token punctuation">;</span>
+
+</code></pre>
+<p><img src="https://img-blog.csdnimg.cn/20210305163246453.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZpbmRtdQ==,size_16,color_FFFFFF,t_70" alt="在这里插入图片描述"></p>
+<h2><a id="12_HDMI_997"></a>12. HDMI测试</h2>
+<h3><a id="121_Terminal_998"></a>12.1 显示Terminal</h3>
+<ol>
+<li>树莓派7寸显示器、AOC显示器、LG显示器均不能正常显示。</li>
+<li>DELL显示器可以显示控制台，但是存在花屏的问题。</li>
+</ol>
+<h3><a id="122_CSI0J1_1001"></a>12.2 CSI0（J1接口）</h3>
+<p>修改代码：</p>
+<pre><code class="prism language-bash">lmde@vb:/work/sf/beagle_freedeom_u_sdk/HiFive_U-Boot$ <span class="token function">git</span> <span class="token function">diff</span>
+<span class="token function">diff</span> --git a/arch/riscv/dts/hifive_u74_nvdla_iofpga.dts b/arch/riscv/dts/hifive_u74_nvdla_iofpga.dts
+index 49b3fbc<span class="token punctuation">..</span>ddce1eb 100755
+--- a/arch/riscv/dts/hifive_u74_nvdla_iofpga.dts
++++ b/arch/riscv/dts/hifive_u74_nvdla_iofpga.dts
+@@ -592,16 +592,16 @@
+                        status <span class="token operator">=</span> <span class="token string">"okay"</span><span class="token punctuation">;</span>
+                        ddr-format <span class="token operator">=</span> <span class="token operator">&lt;</span>WIN_FMT_RGB565<span class="token operator">&gt;</span><span class="token punctuation">;</span>/*LCDC win_format*/
+ 
+-                       /*pp1 <span class="token punctuation">{</span>
++                       pp1 <span class="token punctuation">{</span>
+                                pp-id <span class="token operator">=</span> <span class="token operator">&lt;</span>1<span class="token operator">&gt;</span><span class="token punctuation">;</span>
+                                fifo-out<span class="token punctuation">;</span>
+                                src-format <span class="token operator">=</span> <span class="token operator">&lt;</span>COLOR_YUV420_NV21<span class="token operator">&gt;</span><span class="token punctuation">;</span>
+-                               src-width <span class="token operator">=</span> <span class="token operator">&lt;</span>800<span class="token operator">&gt;</span><span class="token punctuation">;</span>
+-                               src-height <span class="token operator">=</span> <span class="token operator">&lt;</span>480<span class="token operator">&gt;</span><span class="token punctuation">;</span>
++                               src-width <span class="token operator">=</span> <span class="token operator">&lt;</span>1920<span class="token operator">&gt;</span><span class="token punctuation">;</span>
++                               src-height <span class="token operator">=</span> <span class="token operator">&lt;</span>1080<span class="token operator">&gt;</span><span class="token punctuation">;</span>
+                                dst-format <span class="token operator">=</span> <span class="token operator">&lt;</span>COLOR_RGB888_ARGB<span class="token operator">&gt;</span><span class="token punctuation">;</span>
+-                               dst-width <span class="token operator">=</span> <span class="token operator">&lt;</span>800<span class="token operator">&gt;</span><span class="token punctuation">;</span>
+-                               dst-height <span class="token operator">=</span> <span class="token operator">&lt;</span>480<span class="token operator">&gt;</span><span class="token punctuation">;</span>
+-                       <span class="token punctuation">}</span><span class="token punctuation">;</span>*/
++                               dst-width <span class="token operator">=</span> <span class="token operator">&lt;</span>1920<span class="token operator">&gt;</span><span class="token punctuation">;</span>
++                               dst-height <span class="token operator">=</span> <span class="token operator">&lt;</span>1080<span class="token operator">&gt;</span><span class="token punctuation">;</span>
++                       <span class="token punctuation">}</span><span class="token punctuation">;</span>
+                <span class="token punctuation">}</span><span class="token punctuation">;</span>
+ 
+                vin_sysctl:vin_sysctl@19800000 <span class="token punctuation">{</span>
+@@ -623,8 +623,8 @@
+ 
+                        /*defaule config <span class="token keyword">for</span> imx219 vin<span class="token operator">&amp;</span>isp*/
+                        <span class="token function">format</span> <span class="token operator">=</span> <span class="token operator">&lt;</span>SRC_CSI2RX_VIN_ISP<span class="token operator">&gt;</span><span class="token punctuation">;</span>
+-                       frame-width <span class="token operator">=</span> <span class="token operator">&lt;</span>800<span class="token operator">&gt;</span><span class="token punctuation">;</span>
+-                       frame-height <span class="token operator">=</span><span class="token operator">&lt;</span>480<span class="token operator">&gt;</span><span class="token punctuation">;</span>
++                       frame-width <span class="token operator">=</span> <span class="token operator">&lt;</span>1920<span class="token operator">&gt;</span><span class="token punctuation">;</span>
++                       frame-height <span class="token operator">=</span><span class="token operator">&lt;</span>1080<span class="token operator">&gt;</span><span class="token punctuation">;</span>
+                        isp0_enable<span class="token punctuation">;</span>
+                        csi-lane <span class="token operator">=</span> <span class="token operator">&lt;</span>2<span class="token operator">&gt;</span><span class="token punctuation">;</span>
+                        csi-dlane-swaps <span class="token operator">=</span> /bits/ 8 <span class="token operator">&lt;</span>1<span class="token operator">&gt;</span>,/bits/ 8 <span class="token operator">&lt;</span>2<span class="token operator">&gt;</span>,/bits/ 8 <span class="token operator">&lt;</span>3<span class="token operator">&gt;</span>,/bits/ 8 <span class="token operator">&lt;</span>4<span class="token operator">&gt;</span><span class="token punctuation">;</span>
+
+</code></pre>
+<pre><code class="prism language-bash">lmde@vb:/work/sf/beagle_freedeom_u_sdk/linux$ <span class="token function">git</span> <span class="token function">diff</span>
+<span class="token function">diff</span> --git a/drivers/video/fbdev/starfive/starfive_fb.c b/drivers/video/fbdev/starfive/starfive_fb.c
+index 91f91d444<span class="token punctuation">..</span>06c28510d 100755
+--- a/drivers/video/fbdev/starfive/starfive_fb.c
++++ b/drivers/video/fbdev/starfive/starfive_fb.c
+@@ -1041,7 +1041,7 @@ static int sf_fb_parse_dt<span class="token punctuation">(</span>struct device *dev, struct sf_fb_data *sf_dev<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+        <span class="token keyword">return</span> ret<span class="token punctuation">;</span>
+ <span class="token punctuation">}</span>
+ 
+-//<span class="token comment">#define FB_BUFF_VIN</span>
++<span class="token comment">#define FB_BUFF_VIN</span>
+ 
+ static int starfive_fb_probe<span class="token punctuation">(</span>struct platform_device *pdev<span class="token punctuation">)</span>
+ <span class="token punctuation">{</span>
+</code></pre>
+<p>显示效果：<br>
+<img src="https://img-blog.csdnimg.cn/20210226144046526.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZpbmRtdQ==,size_16,color_FFFFFF,t_70" alt="在这里插入图片描述"></p>
+<h3><a id="123_CSI1J2_1063"></a>12.3 CSI1（J2接口）</h3>
+<p>修改代码：</p>
+<pre><code class="prism language-bash">lmde@vb:/work/sf/beagle_freedeom_u_sdk/HiFive_U-Boot$ <span class="token function">git</span> <span class="token function">diff</span>
+<span class="token function">diff</span> --git a/arch/riscv/dts/hifive_u74_nvdla_iofpga.dts b/arch/riscv/dts/hifive_u74_nvdla_iofpga.dts
+index 49b3fbc<span class="token punctuation">..</span>5e8a596 100755
+--- a/arch/riscv/dts/hifive_u74_nvdla_iofpga.dts
++++ b/arch/riscv/dts/hifive_u74_nvdla_iofpga.dts
+@@ -315,6 +315,12 @@
+                                compatible <span class="token operator">=</span> <span class="token string">"seeed_panel"</span><span class="token punctuation">;</span>
+                                reg <span class="token operator">=</span> <span class="token operator">&lt;</span>0x45<span class="token operator">&gt;</span><span class="token punctuation">;</span>
+                        <span class="token punctuation">}</span><span class="token punctuation">;</span>
++                       
++                       imx219@10 <span class="token punctuation">{</span>
++                               compatible <span class="token operator">=</span> <span class="token string">"imx219"</span><span class="token punctuation">;</span>
++                               reg <span class="token operator">=</span> <span class="token operator">&lt;</span>0x10<span class="token operator">&gt;</span><span class="token punctuation">;</span>
++                               reset-gpio <span class="token operator">=</span> <span class="token operator">&lt;</span><span class="token operator">&amp;</span>gpio 58 0<span class="token operator">&gt;</span><span class="token punctuation">;</span>
++                       <span class="token punctuation">}</span><span class="token punctuation">;</span>
+                <span class="token punctuation">}</span><span class="token punctuation">;</span>
+
+@@ -623,10 +629,11 @@
+ 
+                        /*defaule config <span class="token keyword">for</span> imx219 vin<span class="token operator">&amp;</span>isp*/
+                        <span class="token function">format</span> <span class="token operator">=</span> <span class="token operator">&lt;</span>SRC_CSI2RX_VIN_ISP<span class="token operator">&gt;</span><span class="token punctuation">;</span>
+-                       frame-width <span class="token operator">=</span> <span class="token operator">&lt;</span>800<span class="token operator">&gt;</span><span class="token punctuation">;</span>
+-                       frame-height <span class="token operator">=</span><span class="token operator">&lt;</span>480<span class="token operator">&gt;</span><span class="token punctuation">;</span>
++                       frame-width <span class="token operator">=</span> <span class="token operator">&lt;</span>1920<span class="token operator">&gt;</span><span class="token punctuation">;</span>
++                       frame-height <span class="token operator">=</span><span class="token operator">&lt;</span>1080<span class="token operator">&gt;</span><span class="token punctuation">;</span>
+                        isp0_enable<span class="token punctuation">;</span>
+                        csi-lane <span class="token operator">=</span> <span class="token operator">&lt;</span>2<span class="token operator">&gt;</span><span class="token punctuation">;</span>
++<span class="token comment">#if 0</span>
+                        csi-dlane-swaps <span class="token operator">=</span> /bits/ 8 <span class="token operator">&lt;</span>1<span class="token operator">&gt;</span>,/bits/ 8 <span class="token operator">&lt;</span>2<span class="token operator">&gt;</span>,/bits/ 8 <span class="token operator">&lt;</span>3<span class="token operator">&gt;</span>,/bits/ 8 <span class="token operator">&lt;</span>4<span class="token operator">&gt;</span><span class="token punctuation">;</span>
+                        csi-dlane-pn-swaps  <span class="token operator">=</span> /bits/ 8 <span class="token operator">&lt;</span>0<span class="token operator">&gt;</span>,/bits/ 8 <span class="token operator">&lt;</span>0<span class="token operator">&gt;</span>,/bits/ 8 <span class="token operator">&lt;</span>0<span class="token operator">&gt;</span>,/bits/ 8 <span class="token operator">&lt;</span>0<span class="token operator">&gt;</span><span class="token punctuation">;</span>
+                        csi-clane-swap <span class="token operator">=</span> /bits/ 8 <span class="token operator">&lt;</span>0<span class="token operator">&gt;</span><span class="token punctuation">;</span>
+@@ -635,7 +642,16 @@
+                        csi-width <span class="token operator">=</span> <span class="token operator">&lt;</span>1920<span class="token operator">&gt;</span><span class="token punctuation">;</span>
+                        csi-height <span class="token operator">=</span> <span class="token operator">&lt;</span>1080<span class="token operator">&gt;</span><span class="token punctuation">;</span>
+                        csi-dt <span class="token operator">=</span> <span class="token operator">&lt;</span>0x2b<span class="token operator">&gt;</span><span class="token punctuation">;</span>
+-
++<span class="token comment">#else</span>
++                       csi-dlane-swaps <span class="token operator">=</span> /bits/ 8 <span class="token operator">&lt;</span>3<span class="token operator">&gt;</span>,/bits/ 8 <span class="token operator">&lt;</span>4<span class="token operator">&gt;</span>,/bits/ 8 <span class="token operator">&lt;</span>1<span class="token operator">&gt;</span>,/bits/ 8 <span class="token operator">&lt;</span>2<span class="token operator">&gt;</span><span class="token punctuation">;</span>
++                       csi-dlane-pn-swaps  <span class="token operator">=</span> /bits/ 8 <span class="token operator">&lt;</span>1<span class="token operator">&gt;</span>,/bits/ 8 <span class="token operator">&lt;</span>0<span class="token operator">&gt;</span>,/bits/ 8 <span class="token operator">&lt;</span>0<span class="token operator">&gt;</span>,/bits/ 8 <span class="token operator">&lt;</span>0<span class="token operator">&gt;</span><span class="token punctuation">;</span>
++                       csi-clane-swap <span class="token operator">=</span> /bits/ 8 <span class="token operator">&lt;</span>5<span class="token operator">&gt;</span><span class="token punctuation">;</span>
++                       csi-clane-pn-swap <span class="token operator">=</span> /bits/ 8 <span class="token operator">&lt;</span>0<span class="token operator">&gt;</span><span class="token punctuation">;</span>
++                       csi-mipiID <span class="token operator">=</span> <span class="token operator">&lt;</span>0<span class="token operator">&gt;</span><span class="token punctuation">;</span>
++                       csi-width <span class="token operator">=</span> <span class="token operator">&lt;</span>1920<span class="token operator">&gt;</span><span class="token punctuation">;</span>
++                       csi-height <span class="token operator">=</span> <span class="token operator">&lt;</span>1080<span class="token operator">&gt;</span><span class="token punctuation">;</span>
++                       csi-dt <span class="token operator">=</span> <span class="token operator">&lt;</span>0x2b<span class="token operator">&gt;</span><span class="token punctuation">;</span>
++<span class="token comment">#endif</span>
+
+</code></pre>
+<p>显示效果:<br>
+<img src="https://img-blog.csdnimg.cn/20210226145221746.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZpbmRtdQ==,size_16,color_FFFFFF,t_70" alt="在这里插入图片描述"></p>
+<h2><a id="13_DSP_1117"></a>13. DSP测试</h2>
+<pre><code class="prism language-bash">tftp -l vp6_elf -r vp6_elf -g 192.168.4.55
+tftp -l xrp.ko -r xrp.ko -g 192.168.4.55
+tftp -l xrp-host-hosted -r xrp-host-hosted -g 192.168.4.55
+<span class="token function">ls</span> -l
+total 1488
+-rw-r--r--    1 root     root        580662 Jan  1 00:05 vp6_elf
+-rw-r--r--    1 root     root         66936 Jan  1 00:05 xrp-host-hosted
+-rw-r--r--    1 root     root        868816 Jan  1 00:05 xrp.ko
+
+<span class="token function">cp</span> vp6_elf /lib/firmware/
+<span class="token function">chmod</span> +x xrp-host-hosted
+</code></pre>
+<pre><code class="prism language-bash">insmod xrp.ko 
+<span class="token punctuation">[</span>  505.500000<span class="token punctuation">]</span> Call xrp init common
+<span class="token punctuation">[</span>  505.500000<span class="token punctuation">]</span> --init_hw: regs <span class="token operator">=</span> 0x00000000124b0000/76b0000
+<span class="token punctuation">[</span>  505.510000<span class="token punctuation">]</span> xrp f0000000.xrp: init_hw: device IRQ MMIO host src0 <span class="token operator">=</span> 0x00000013, src1 <span class="token operator">=</span> 0x00000013, device IRQ <span class="token operator">=</span> 19, IRQ 1
+<span class="token punctuation">[</span>  505.530000<span class="token punctuation">]</span> xrp f0000000.xrp: init_hw: host IRQ <span class="token operator">=</span> 23, 
+<span class="token punctuation">[</span>  505.540000<span class="token punctuation">]</span> xrp f0000000.xrp: hw init end: 0 1
+<span class="token punctuation">[</span>  505.550000<span class="token punctuation">]</span> init_flags:1
+<span class="token punctuation">[</span>  505.550000<span class="token punctuation">]</span> xrp f0000000.xrp: define __kernel__
+<span class="token punctuation">[</span>  505.560000<span class="token punctuation">]</span> xrp_init_common: <span class="token function">comm</span> <span class="token operator">=</span> 0x0000001072000000/000000000c8d4094
+<span class="token punctuation">[</span>  505.570000<span class="token punctuation">]</span> xrp_init_common: xvp-<span class="token operator">&gt;</span>pmem <span class="token operator">=</span> 0x0000001072001000
+<span class="token punctuation">[</span>  505.580000<span class="token punctuation">]</span> xrp f0000000.xrp: xrp_init_address_map: na <span class="token operator">=</span> 1, pna <span class="token operator">=</span> 2, ns <span class="token operator">=</span> 1, rlen <span class="token operator">=</span> 8 cells, n <span class="token operator">=</span> 2
+<span class="token punctuation">[</span>  505.590000<span class="token punctuation">]</span> xrp f0000000.xrp:   src_addr <span class="token operator">=</span> 0x40000000, dst_addr <span class="token operator">=</span> 0x40000000, size <span class="token operator">=</span> 0x1000000
+<span class="token punctuation">[</span>  505.600000<span class="token punctuation">]</span> xrp f0000000.xrp:   src_addr <span class="token operator">=</span> 0x1070000000, dst_addr <span class="token operator">=</span> 0xb0000000, size <span class="token operator">=</span> 0x3000000
+<span class="token punctuation">[</span>  505.620000<span class="token punctuation">]</span> vp6 halt.
+<span class="token punctuation">[</span>  505.620000<span class="token punctuation">]</span> vp6 initialise end.
+<span class="token punctuation">[</span>  505.630000<span class="token punctuation">]</span> xrp f0000000.xrp: xrp_firmware_find_symbol: found symbol, st_shndx <span class="token operator">=</span> 18, sh_offset <span class="token operator">=</span> 0x0000c8c0, sh_addr <span class="token operator">=</span> 2
+<span class="token punctuation">[</span>  505.660000<span class="token punctuation">]</span> xrp f0000000.xrp: xrp_firmware_fixup_symbol: value pointed to by symbol is incorrect: 00 00 00 b2
+<span class="token punctuation">[</span>  505.670000<span class="token punctuation">]</span> xrp f0000000.xrp: loading segment 6 <span class="token punctuation">(</span>device 0xb0000000<span class="token punctuation">)</span> to physical 0x0000001070000000
+<span class="token punctuation">[</span>  505.690000<span class="token punctuation">]</span> xrp f0000000.xrp: loading segment 7 <span class="token punctuation">(</span>device 0xb0000400<span class="token punctuation">)</span> to physical 0x0000001070000400
+<span class="token punctuation">[</span>  505.700000<span class="token punctuation">]</span> xrp f0000000.xrp: loading segment 8 <span class="token punctuation">(</span>device 0xb0000580<span class="token punctuation">)</span> to physical 0x0000001070000580
+<span class="token punctuation">[</span>  505.720000<span class="token punctuation">]</span> xrp f0000000.xrp: loading segment 9 <span class="token punctuation">(</span>device 0xb00005c0<span class="token punctuation">)</span> to physical 0x00000010700005c0
+<span class="token punctuation">[</span>  505.740000<span class="token punctuation">]</span> xrp f0000000.xrp: loading segment 10 <span class="token punctuation">(</span>device 0xb0000600<span class="token punctuation">)</span> to physical 0x0000001070000600
+<span class="token punctuation">[</span>  505.750000<span class="token punctuation">]</span> xrp f0000000.xrp: loading segment 11 <span class="token punctuation">(</span>device 0xb0000640<span class="token punctuation">)</span> to physical 0x0000001070000640
+<span class="token punctuation">[</span>  505.770000<span class="token punctuation">]</span> xrp f0000000.xrp: loading segment 12 <span class="token punctuation">(</span>device 0xb0000680<span class="token punctuation">)</span> to physical 0x0000001070000680
+<span class="token punctuation">[</span>  505.790000<span class="token punctuation">]</span> xrp f0000000.xrp: loading segment 13 <span class="token punctuation">(</span>device 0xb00006c0<span class="token punctuation">)</span> to physical 0x00000010700006c0
+<span class="token punctuation">[</span>  505.810000<span class="token punctuation">]</span> xrp f0000000.xrp: loading segment 14 <span class="token punctuation">(</span>device 0xb0000700<span class="token punctuation">)</span> to physical 0x0000001070000700
+<span class="token punctuation">[</span>  505.830000<span class="token punctuation">]</span> xrp f0000000.xrp: loading segment 15 <span class="token punctuation">(</span>device 0xb0000740<span class="token punctuation">)</span> to physical 0x0000001070000740
+<span class="token punctuation">[</span>  505.850000<span class="token punctuation">]</span> xrp f0000000.xrp: loading segment 16 <span class="token punctuation">(</span>device 0xb00007c0<span class="token punctuation">)</span> to physical 0x00000010700007c0
+<span class="token punctuation">[</span>  505.870000<span class="token punctuation">]</span> xrp f0000000.xrp: loading segment 17 <span class="token punctuation">(</span>device 0xb000cbc0<span class="token punctuation">)</span> to physical 0x000000107000cbc0
+<span class="token punctuation">[</span>  505.890000<span class="token punctuation">]</span> xrp f0000000.xrp: loading segment 18 <span class="token punctuation">(</span>device 0xb2000000<span class="token punctuation">)</span> to physical 0x0000001072000000
+<span class="token punctuation">[</span>  505.910000<span class="token punctuation">]</span> vp6 begin run.
+<span class="token punctuation">[</span>  505.930000<span class="token punctuation">]</span> send_irq: trigger
+<span class="token punctuation">[</span>  505.940000<span class="token punctuation">]</span> vic_irq_handler recv irq <span class="token punctuation">..</span>.
+<span class="token punctuation">[</span>  505.950000<span class="token punctuation">]</span> xrp f0000000.xrp: xrp_irq_handler
+<span class="token punctuation">[</span>  505.960000<span class="token punctuation">]</span> xrp f0000000.xrp:   completing queue 0
+</code></pre>
+<pre><code class="prism language-bash">./xrp-host-hosted 
+<span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">=</span>communication<span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">=</span><span class="token punctuation">[</span>  681.590000<span class="token punctuation">]</span> xvp_open
+
+input data:
+<span class="token punctuation">[</span>  681.600000<span class="token punctuation">]</span> xrp_fill_hw_request: cmd <span class="token keyword">for</span> DSP: 000000000c8d4094: 00 00 00 00 08 00 00 00 08 00 00 00 00 00 00 00 03 03 00
+3,3,3,3,3,3,3,3,
+<span class="token punctuation">[</span>  681.640000<span class="token punctuation">]</span> send_irq: trigger
+<span class="token punctuation">[</span>  681.640000<span class="token punctuation">]</span> xrp f0000000.xrp: run irq mode.
+<span class="token punctuation">[</span>  681.650000<span class="token punctuation">]</span> vic_irq_handler recv irq <span class="token punctuation">..</span>.
+<span class="token punctuation">[</span>  681.660000<span class="token punctuation">]</span> xrp f0000000.xrp: xrp_irq_handler
+<span class="token punctuation">[</span>  681.670000<span class="token punctuation">]</span> xrp f0000000.xrp:   completing queue 0
+output data<span class="token punctuation">[</span>  681.680000<span class="token punctuation">]</span> xvp_close
+
+5,5,5,5,5,5,5,5,
+<span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span>finish<span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">==</span><span class="token operator">=</span>
+</code></pre>
+<h2><a id="14_Audio_1185"></a>14. Audio</h2>
+<p>烧写镜像 fw_vic.bin.out 到u-boot分区，然后启动：<br>
+1、选择菜单“21: test pwmdac”<br>
+2、选择菜单“0: pwmadc play audio by fifo”<br>
+用耳机可以听到左右两边均有声音。</p>
+<h2><a id="15_CPU_1191"></a>15. CPU跑分</h2>
+<p><a href="https://blog.csdn.net/feixiaoxing/article/details/9005587">Dhrystone Benchmark, Version 2.1</a><br>
+<img src="https://img-blog.csdnimg.cn/20210305145713771.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZpbmRtdQ==,size_16,color_FFFFFF,t_70" alt="在这里插入图片描述"><br>
+<img src="https://img-blog.csdnimg.cn/20210305145734979.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZpbmRtdQ==,size_16,color_FFFFFF,t_70" alt="在这里插入图片描述"></p>
+</div>
+</body>
+
+</html>
