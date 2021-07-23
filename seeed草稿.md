@@ -132,6 +132,8 @@ ext4load mmc 1:2 C2000000 uImage
 /dtbs/5.5.19-armv7-lpae-x26/stm32mp157c-seeed-npi.dtb
 /vmlinuz-5.5.19-armv7-lpae-x26
 
+make -f ../Makefile.sdk all UBOOT_CONFIGS=../basic/.config,basic,u-boot.img DEVICE_TREE=stm32mp157c-odyssey
+
 
 # seeed-odyseey 设备树
 &ethernet0 {

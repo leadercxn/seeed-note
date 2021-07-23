@@ -49,6 +49,9 @@
                         --tos-fw  tf-a-bl32-stm32mp15.bin  \
                         --nt-fw  u-boot-nodtb.bin \
                         odyssey-fip.bin
+
+                fiptool create --fw-config ../arm-trusted-firmware/fwconfig/stm32mp157c-odyssey-fw-config-trusted.dtb  --hw-config  ../../u-boot-stm32mp-2020.10.r1-r0/deploy/u-boot-stm32mp157c-odyssey-trusted.dtb  --tos-fw-config ../arm-trusted-firmware/bl32/stm32mp157c-odyssey-bl32.dtb  --tos-fw  ../arm-trusted-firmware/bl32/tf-a-bl32-stm32mp15.bin  --nt-fw ../../u-boot-stm32mp-2020.10.r1-r0/deploy/u-boot-nodtb-stm32mp15.bin    fip_cxn_v1.bin
+
             ```
         + 假如在调试过程中，修改了 BL32相关源码，可通过 fiptool 工具针对性修改对应的 fip.bin文件
             ```

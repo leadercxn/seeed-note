@@ -50,3 +50,32 @@
 * 修改
 
 
+## 踩坑
+1. .config 文件配置的 CONFIG_BOOTCOMMAND , 可追溯到 <uboot source dir>/configs/stm32mp15_trusted_defconfig 文件
+    ```sh
+        CONFIG_BOOTCOMMAND = "run bootcmd_stm32mp"
+    ```
+
+2.  要修改 <uboot source dir>/include/configs/stm32mp1.h
+    + 取消自动保存环境变量的设定,建议这么做。
+        ```c
+            "run env_check;" \
+
+            "env_check=if env info -p -d -q; then env save; fi\0" \
+        ```
+    + 添加宏
+        ```c
+            #define BOOT_TARGET_LEGACY_MMC0(func)  func(LEGACY_MMC,legacy_mmc,0)
+            #define BOOT_TARGET_LEGACY_MMC1(func)  func(LEGACY_MMC,legacy_mmc,1)
+        ```
+    + 改变环境变量的目标值
+        ```c
+            #define BOOT_TARGET_DEVICES(func)	\
+                BOOT_TARGET_MMC1(func)		\
+                BOOT_TARGET_UBIFS(func)		\
+                BOOT_TARGET_MMC0(func)		\
+                BOOT_TARGET_MMC2(func)		\
+                BOOT_TARGET_PXE(func)
+        ```
+3. 了解 <uboot source dir>/include/config_distro_bootcmd.h 文件，是uboot变量和命令的设置
+

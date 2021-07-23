@@ -132,13 +132,17 @@
 * layer 操作
     * layer的新增和添加到bitbake的构建命令中
         1. 新增layer
-            ```
+            ```sh
                 bitbake-layers create-layer your_layer_name
             ```
         2. 启用自建的layer,需要在 <build dir> 目录下的 conf/bblayers.conf 的 BBLAYERS 变量中，新增指定layer的路径 ,或使用命令 
-            ```
+            ```sh
                 bitbake-layers add-layer your_layer_name
-        ```
+            ```
+        3. 可以使用 bitbake-layer 拉取 openEmbedded 仓库的 meta-layer
+            ```sh 
+                bitbake-layers layerindex-fetch -b master meat-ti # 会拉取ti的layer,同时还添加了其他依赖的meta layer，且在 build/conf/bblayers.conf 中添加
+            ```
 
 ## 定制化镜像
 * 定制化镜像
@@ -227,3 +231,18 @@
         bitbake命令单独编译kernel：
             bitbake -c compile -f linux-imx       //编译内核
             bitbake -c deploy -f linux-imx        //部署内核镜像到deploy目录
+
+
+## Yocto 变量选择 bb.utils.contains 使用
+* 链接说明
+    [Yocto 变量选择 bb.utils.contains 使用](https://blog.csdn.net/xue1065540183/article/details/105663248/)
+* demo
+    ```sh
+        ABC = “${@bb.utils.contains('val', 1', 'true', 'false ', d)}"
+        val = 1 则 ABC 赋值 true，否则 ABC 赋值 false
+    ```
+    ```sh
+        CFLAGS_prepend = "${@bb.utils.contains('GCCVERSION', '4.6.3', ' -std=c99', ' ', d)}"
+        如果'GCCVERSION' = '4.6.3'则 CFLAGS_prepend 赋值为'-std=c99'，否则CFLAGS_prepend赋值为空
+    ```
+
