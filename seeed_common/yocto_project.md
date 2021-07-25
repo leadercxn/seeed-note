@@ -231,6 +231,7 @@
         bitbake命令单独编译kernel：
             bitbake -c compile -f linux-imx       //编译内核
             bitbake -c deploy -f linux-imx        //部署内核镜像到deploy目录
+    3. bitbake xxx -c listtasks                     // 列出构建某个过程中需要执行的任务
 
 
 ## Yocto 变量选择 bb.utils.contains 使用
