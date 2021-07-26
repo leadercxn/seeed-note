@@ -130,7 +130,7 @@
         可以把  ` alias yocto_find ='locate -d  AbsolutePath/yocto_updatedb'  ` 放到 ~/.bashrc 文件里
     4.  查找某些文件中的关键字
         ```sh
-            yocto_find *.bb *.bbappend *.inc | xargs grep -in KERNEL_EXTRA_FEATURES
+            yocto_find *.bb *.bbappend *.inc *.conf *.bbclass| grep -v "build-openstlinuxweston-stm32mp1" | xargs grep -in KERNEL_EXTRA_FEATURES
         ```
     5. 过滤某个文件夹
         ```sh
@@ -142,6 +142,17 @@
         ```
     7. 有待验证,假如目录中的文件发生改变，是否再次执行 `updatedb -U . -o yocto_updatedb`命令
 
+poky]$ mylocate *.bb *.bbappend *.inc *.conf *.bbclass | grep -v "poky/build" | xargs grep -in KERNEL_EXTRA_FEATURES
+/home/peeta/poky/meta/recipes-kernel/linux/linux-yocto-dev.bb:47:KERNEL_EXTRA_FEATURES ?= "features/netfilter/netfilter.scc features/taskstats/taskstats.scc"
+/home/peeta/poky/meta/recipes-kernel/linux/linux-yocto-dev.bb:48:KERNEL_FEATURES_append = " ${KERNEL_EXTRA_FEATURES}"
+/home/peeta/poky/meta/recipes-kernel/linux/linux-yocto-rt_5.4.bb:39:KERNEL_EXTRA_FEATURES ?= "features/netfilter/netfilter.scc features/taskstats/taskstats.scc"
+/home/peeta/poky/meta/recipes-kernel/linux/linux-yocto-rt_5.4.bb:40:KERNEL_FEATURES_append = " ${KERNEL_EXTRA_FEATURES}"
+/home/peeta/poky/meta/recipes-kernel/linux/linux-yocto-rt_5.8.bb:39:KERNEL_EXTRA_FEATURES ?= "features/netfilter/netfilter.scc features/taskstats/taskstats.scc"
+/home/peeta/poky/meta/recipes-kernel/linux/linux-yocto-rt_5.8.bb:40:KERNEL_FEATURES_append = " ${KERNEL_EXTRA_FEATURES}"
+/home/peeta/poky/meta/recipes-kernel/linux/linux-yocto_5.4.bb:48:KERNEL_EXTRA_FEATURES ?= "features/netfilter/netfilter.scc"
+/home/peeta/poky/meta/recipes-kernel/linux/linux-yocto_5.4.bb:49:KERNEL_FEATURES_append = " ${KERNEL_EXTRA_FEATURES}"
+/home/peeta/poky/meta/recipes-kernel/linux/linux-yocto_5.8.bb:49:KERNEL_EXTRA_FEATURES ?= "features/netfilter/netfilter.scc"
+/home/peeta/poky/meta/recipes-kernel/linux/linux-yocto_5.8.bb:50:KERNEL_FEATURES_append = " ${KERNEL_EXTRA_FEATURES}"
 
 
 ## 实操
@@ -365,6 +376,69 @@
                 TOOLCHAIN_TARGET_TASK="packagegroup-core-standalone-sdk-target target-sdk-provides-dummy     packagegroup-core-boot     packagegroup-base-extended               learnyocto run-postinsts rpm dnf psplash packagegroup-core-ssh-dropbear packagegroup-core-x11-base packagegroup-core-x11-sato"
 
         ```
+
+    40. DISTRO
+        表示发行版的简称。 一般在 meta-xxx/conf/distro/xxx.conf 文件中
+    41. DISTRO_VERSION
+        发行版本
+    42. VARIANT
+        版本的变种
+        VARIANT="perf"
+        #or
+        VARIANT="debug"
+    43. PACKAGE_DEBUG_SPLIT_STYLE
+        决定在创建与gdb调试器一起使用的*.dbg包时，如何分割二进制文件和调试信息
+    44. SERIAL_CONSOLE && SERIAL_CONSOLES
+        指定控制台的波特率
+        ```sh
+            SERIAL_CONSOLE = "115200 ttyS0"
+            SERIAL_CONSOLES = "115200;ttyS0 115200;ttyS1"
+        ```
+    45. FULL_OPTIMIZATION
+        编译优化系统时传入TARGET_CFLAGS 和 CFLAGS 的选项中，默认是 `-O2 -pipe ${DEBUG_FLAGS}`
+    46. ENABLE_BINARY_LOCALE_GENERATION
+        控制在构建期间为glibc生成那些 locals (区域)，对于一些RAM不超过64M的设备，有用
+    47. USE_LDCONFIG
+        控制是否安装ldconfig，like：不安装  USE_LDCONFIG = "0"
+    48. PREFERRED_VERSION
+        优先使用某个版本，前提是你的recipe支持多个版本，并且是这些版本中的一个才可以用。以 PN(recipe)做后缀，赋值为版本号，可以用通配符 "%"
+        ```
+            PREFERRED_VERSION_autoconf = "2.68"
+            PREFERRED_VERSION_readline = "5.2"
+            PREFERRED_VERSION_python = "3.4.0"
+            PREFERRED_VERSION_linux-yocto = "4.12%"
+        ```
+    49. USE_DEVFS
+        确定devtmpfs是否用于/dev入口，一般默认值为"1"
+    50. DEPLOY_DIR_IMAGE
+        指向构建系统 用于放置准备部署到目标机器上的镜像和其他相关输出文件的目录。该目录是特定于机器的，因为他包含 MACHINE 名，默认情况下是 ${DEPLOY_DIR}/images/${MACHINE}/中
+    51. PACKAGE_ARCH
+        生成一个或多个体系结构的软件包
+
+
+    52. inherit
+        继承一个或者多个class类。通常是继承 bbclass 文件的类
+    53. require
+        引用共性 .inc 文件
+    54. DEPENDS
+        告知当前的recipe依赖其他的recipe
+        ```sh
+            DEPENDS = "bar"
+            DEPENDS_append = "baz"
+            或者这样：
+            DEPENDS = "bar"
+            DEPENDS += "baz"
+            或者这样：
+            DEPENDS = "bar baz"
+        ```
+    56. THISDIR
+        当前bb文件所在的当前路径
+    57. FILESEXTRAPATHS
+        用来扩展构建系统在处理recipe和append文件时，查找文件和补丁时使用的搜索路径。bitbake在处理recipes时默认使用的目录最初由 FILESPATH 变量定义，可以通过 FILESEXTRAPATHS 变量来扩展所搜路径
+
+    58. CORE_IMAGE_EXTRA_INSTALL
+        允许您基于核心映像类向映像添加额外的包。
+    
         
 
 
@@ -373,8 +447,6 @@
     * 详细的流程图可以参考： [Bitbake 镜像文件制作](https://fulinux.blog.csdn.net/article/details/110400636)
     * do_rootfs任务
         为映像创建根文件系统（文件和目录结构）
-
-
 
 
 ## build目录架构

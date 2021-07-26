@@ -71,7 +71,39 @@
         ```sh
             devtool undeploy-target learnyocto root@192.168.1.101:/ # 如果部署了多个应用程序，可以使用 -a 选项将他们全部删除，从而将目标设备恢复到其原始状态
         ```
-    11. 
+    11. devtool modify
+        用来修改某个开源的代码。 具体demo：[yocto-第12篇-如何修改开源项目的代码呢？](https://fulinux.blog.csdn.net/article/details/109258938)
+
+        步骤：
+        1. devtool modify 命令获取源代码。like: devtool modify alsa-utils。默认放到build/workspace/sources目录中，并创建git存储库，并自动切换到devtool分支。
+        2. 修改源码
+        3. devtool build alsa-utils编译
+        4. git add -u ; git commit 来把修改提交到本地储存库
+        5. devtool finish alsa-utils meta-mylayer 将本地git储存库中生成的提交对应的补丁和.bbappend 文件，合并到指定的layer，则原在 workspace 中的 alsa-utils 会失效
+        6. devtool build-image 重新构成镜像
+    12. devtool create-workspace
+        创建 workspace 目录。
+        devtool create-workspace path/name 修改 workspace 的目录位置
+    13. devtool search
+        devtool search keyword 来搜索可用的recipes
+    14. devtool edit-recipe
+        对指定 recipe 命令进行编辑（对应的bb文件）
+    15. devtool update-recipe
+        对recipe源码的修改生成的patch，来对recipe进行更新。例如在 命令11-devtool modify 步骤4之后，可以使用 devtool update-recipe 生成patch并更新recipe
+        ```sh
+            devtool update-recipe alsa-utils -a ../meta-mylayer/
+            devtool finish alsa-utils meta-mylayer
+
+            #类似于 git add 与 git push的搭配使用 
+        ```
+    16. devtool upgrade
+        将现有recipe升级到上游已知的最新版本。[devtool upgrade命令](https://fulinux.blog.csdn.net/article/details/109476622)
+        ```sh
+            devtool upgrade -S version  learnyocto
+        ```
+    17. devtool latest-version
+        查看某个软件工程有哪些版本，以及当前在哪个版本上
+
         
  
 * 命令帮助说明
@@ -92,6 +124,26 @@
                 |-recipes
                 |-sources
 
+
+## 旧版本的devtool工具不够强大，又或者没有devtool工具，修改源码
+* 步骤
+    1. 
+        ```sh
+            cd  build/tmp-glibs/work/xxxxx-linux-gnueabi/dhcpcd/5.2.10-r2/dhcpcd-5.2-10
+            ls -l .git  # 查看有没有git仓库
+            git init .
+            git add -A  # 没的话，强行添加
+            git commit -m ''
+            ...         # 修改源码
+            git add -u
+            git commit -m
+            git format-patch -1 # 生成一个补丁文件
+
+            cp 0001-fix-xxxx.patch  meta-layer/recipes-connectivity/dhcpcd/files/ # 补丁放到对应文件夹下，没的话，就自己创建
+            vim dhcpcd_xxx.bbappend #修改bb文件，添加补丁路径 file://0001-fix-xxxx.patch
+            rebake dfcpcd # 重新编译
+            ... #查看work目录下的源码是否已修改
+        ```
 
 
 
