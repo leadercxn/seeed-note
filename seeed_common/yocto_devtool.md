@@ -143,6 +143,7 @@
             vim dhcpcd_xxx.bbappend #修改bb文件，添加补丁路径 file://0001-fix-xxxx.patch
             rebake dfcpcd # 重新编译
             ... #查看work目录下的源码是否已修改
+
         ```
 
 

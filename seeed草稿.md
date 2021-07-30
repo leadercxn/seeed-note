@@ -419,3 +419,44 @@ image_dcrc = a6fc b7c7 = 4238788535
 		"fi;\0" \
 ```
 
+
+
+bitbake -e tf-a-stm32mp | grep ^TF_A_DEVICETREE=
+TF_A_DEVICETREE="   
+stm32mp157c-odyssey   stm32mp157a-dk1 stm32mp157d-dk1 stm32mp157c-dk2 stm32mp157f-dk2   stm32mp157c-ed1 stm32mp157f-ed1   stm32mp157a-ev1 stm32mp157c-ev1 stm32mp157d-ev1 stm32mp157f-ev1 ,   
+stm32mp157c-odyssey   stm32mp157a-dk1 stm32mp157d-dk1 stm32mp157c-dk2 stm32mp157f-dk2   stm32mp157c-ed1 stm32mp157f-ed1   stm32mp157a-ev1 stm32mp157c-ev1 stm32mp157d-ev1 stm32mp157f-ev1 ,  
+stm32mp157c-ed1 stm32mp157f-ed1  stm32mp157a-ev1 stm32mp157c-ev1 stm32mp157d-ev1 stm32mp157f-ev1,  
+stm32mp157c-ed1 stm32mp157f-ed1  stm32mp157a-ev1 stm32mp157c-ev1 stm32mp157d-ev1 stm32mp157f-ev1,  
+stm32mp157a-ev1 stm32mp157c-ev1 stm32mp157d-ev1 stm32mp157f-ev1,  
+stm32mp157a-dk1 stm32mp157d-dk1 stm32mp157c-dk2 stm32mp157f-dk2  stm32mp157c-ed1 stm32mp157f-ed1  stm32mp157a-ev1 stm32mp157c-ev1 stm32mp157d-ev1 stm32mp157f-ev1, 
+stm32mp157c-odyssey   stm32mp157a-dk1 stm32mp157d-dk1 stm32mp157c-dk2 stm32mp157f-dk2   stm32mp157c-ed1 stm32mp157f-ed1   stm32mp157a-ev1 stm32mp157c-ev1 stm32mp157d-ev1 stm32mp157f-ev1 ,   
+stm32mp157c-odyssey   stm32mp157a-dk1 stm32mp157d-dk1 stm32mp157c-dk2 stm32mp157f-dk2   stm32mp157c-ed1 stm32mp157f-ed1   stm32mp157a-ev1 stm32mp157c-ev1 stm32mp157d-ev1 stm32mp157f-ev1 ,"
+
+bitbake -e tf-a-stm32mp | grep ^TF_A_CONFIG=
+TF_A_CONFIG=" optee trusted  emmc nand nor sdcard  uart usb "
+
+bitbake -e tf-a-stm32mp | grep ^TF_A_EXTRA_OPTFLAGS=
+TF_A_EXTRA_OPTFLAGS="AARCH32_SP=optee ,AARCH32_SP=sp_min ,STM32MP_EMMC=1,STM32MP_RAW_NAND=1 STM32MP_FORCE_MTD_START_OFFSET=0x00200000,STM32MP_SPI_NOR=1 STM32MP_FORCE_MTD_START_OFFSET=0x00080000,STM32MP_SDMMC=1,STM32MP_UART_PROGRAMMER=1,STM32MP_USB_PROGRAMMER=1,"
+
+bitbake -e tf-a-stm32mp | grep ^TF_A_BINARIES=
+TF_A_BINARIES="tf-a,tf-a,tf-a,tf-a,tf-a,tf-a,tf-a,tf-a,"
+
+bitbake -e tf-a-stm32mp | grep ^TF_A_MAKE_TARGET=
+TF_A_MAKE_TARGET="dtbs,bl32 dtbs,all,all,all,all,all,all,"
+
+
+* 原st
+AARCH32_SP=optee  
+AARCH32_SP=sp_min 
+STM32MP_EMMC=1
+STM32MP_RAW_NAND=1 STM32MP_FORCE_MTD_START_OFFSET=0x00200000
+STM32MP_SPI_NOR=1 STM32MP_FORCE_MTD_START_OFFSET=0x00080000
+STM32MP_SDMMC=1
+STM32MP_UART_PROGRAMMER=1
+STM32MP_USB_PROGRAMMER=1
+
+tf-a * 8
+
+
+
+

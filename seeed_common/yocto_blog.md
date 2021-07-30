@@ -343,7 +343,7 @@ poky]$ mylocate *.bb *.bbappend *.inc *.conf *.bbclass | grep -v "poky/build" | 
     33. IMAGE_LINGUAS
         确定为其安装其他语言支持包的语言
         指定在根文件系统构造过程中要安装到镜像中，比如，添加中文语言支持，可在 build/conf/local.conf  中添加`IMAGE_LINGUAS_append= " zh-cn"`,加完之后，需要重新source xxx-env 环境脚本
-    34. PACKAGE_INSTALl
+    34. PACKAGE_INSTALL
         传递给包管理器一安装到镜像中的包的`最终列表`
     35. IMAGE_ROOTFS
         指向文件系统创建过程中的目标位置
@@ -438,7 +438,10 @@ poky]$ mylocate *.bb *.bbappend *.inc *.conf *.bbclass | grep -v "poky/build" | 
 
     58. CORE_IMAGE_EXTRA_INSTALL
         允许您基于核心映像类向映像添加额外的包。
-    
+    59. BB_NUMBER_THREADS = "32" 
+        修改BitBake可以使用的线程，放在 build/conf/local.conf
+    60. PARALLEL_MAKE = "-j 32" 
+        修改make可以使用的线程,放在 build/conf/local.conf
         
 
 

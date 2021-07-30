@@ -79,3 +79,5 @@
         ```
 3. 了解 <uboot source dir>/include/config_distro_bootcmd.h 文件，是uboot变量和命令的设置
 
+4. 由于在环境变量中增加了自定义的命令,所以得在 <u-boot dir>/configs/stm32mp_xx_defconfig 文件中增大 环境变量的大小修改为 `CONFIG_ENV_SIZE=0x4000`
+
