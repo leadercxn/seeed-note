@@ -39,17 +39,23 @@
                 export build_dir=build  #这样方便修改目录
 
                 mkdir -p ../$build_dir
+                # 把 kernel 目录下 /arch/arm/configs/multi_v7_defconfig fragment*.config 的文件转化为 .config并放在 ../build 目录下
                 make ARCH=arm O="$PWD/../$build_dir" multi_v7_defconfig fragment*.config
 
+                # 把自己新增，或者修改的 fragment*.config 追加合并到 ../build/.config 文件中
                 for f in `ls -1 ../fragment*.config`; do scripts/kconfig/merge_config.sh -m -r -O $PWD/../$build_dir $PWD/../$build_dir/.config $f; done
                 
+                # 把上一步追加的宏 恢复到.config 该有的位置上
                 yes '' | make ARCH=arm oldconfig O="$PWD/../$build_dir"
 
-                make ARCH=arm uImage vmlinux dtbs LOADADDR=0xC2000040
+                make ARCH=arm uImage vmlinux dtbs LOADADDR=0xC2000040 -j8
+                or
+                make ARCH=arm uImage vmlinux dtbs LOADADDR=0xC2000040 O="$PWD/../build" -j8
+                make ARCH=arm uImage vmlinux dtbs LOADADDR=0xC2000040 O="$PWD/../$build_dir" -j8
 
-                make ARCH=arm modules
+                make ARCH=arm modules -j8
 
-                make ARCH=arm INSTALL_MOD_PATH="$PWD/../build/install_artifact" modules_install
+                make ARCH=arm INSTALL_MOD_PATH="$PWD/../build/install_artifact" modules_install -j8
 
                 mkdir -p $PWD/../build/install_artifact/boot/
 
@@ -70,7 +76,7 @@
     
     7. 把生成的设备树，和kernel镜像文件放到 sd 的第四分区 bootfs
         ```shell
-            cp -r $build_dir/install_artifact/boot/*    /media/$USER/bootfs/ 
+            cp -r $build_dir/install_artifact/sync/*    /media/$USER/bootfs/ 
         ```
     8. 把生成的 kernel modules 拷贝到 sd 卡的文件系统分区
         ```shell

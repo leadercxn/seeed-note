@@ -39,6 +39,9 @@
 
                 # 设置BIOS的旧分区
                 sudo sgdisk -A 4:set:2 /dev/sdb
+
+                # 查看设备所有分区的名字
+                sudo sgdisk -p /dev/sdb
             ```
     3. 存入 u-boot-spl.stm32 或 tf-a-xxxx.stm32 、u-boot.img
             ```shell

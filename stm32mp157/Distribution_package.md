@@ -78,3 +78,17 @@
 2. yocto 怎么编译文件系统
 3. yocto 怎么编写内核驱动代码，怎么生成.ko文件
 4. yocto 怎么编译工具链
+
+
+## 踩坑
+* 这些坑是从 mac ubuntu18.04上面踩的，在 seeed ubuntu18.04上暂无出现
+    1. 增大磁盘的空间
+        1. 处理 在虚拟机中把磁盘增大后，他不会把原磁盘直接增大，而是增大剩余空间，需要把剩余空间添加分区，后再挂载到文件系统中
+        [在Linux下对未分配剩余空间分区挂载](https://blog.csdn.net/chiyanxi1706/article/details/100799682?utm_medium=distribute.pc_relevant_t0.none-task-blog-BlogCommendFromMachineLearnPai2-1.control&dist_request_id=1328603.58688.16151957706854447&depth_1-utm_source=distribute.pc_relevant_t0.none-task-blog-BlogCommendFromMachineLearnPai2-1.control)
+
+    2. 增大swap区的大小
+        1. ubuntu系统线增大交换区大小的操作[链接](https://blog.csdn.net/m0_46537958/article/details/108469587)
+
+    3. 增大 RAM disk的大小
+        1. 调整ubuntu RAM disk 的大小。（目前没尝试）[Ubuntu如何设置和调整Ram Disk大小](https://xiaohost.com/535.html)
+        2. 在 yocto project/build/conf/local.conf 的最后加上 ` XZ_MEMLIMIT = "70%" ` 的语句，来增大编译时使用RAM的上限
