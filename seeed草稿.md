@@ -500,288 +500,7 @@ port {
 };
 
 
-mipi_dsi_host_register 
-mipi_dsi_host *host->dev->of_node->full_name = dsi@5a000000
-OF: pp->name=#address-cells
-OF: pp->name=#size-cells
-OF: pp->name=name
-OF: pp->name=#address-cells
-OF: pp->name=#size-cells
-OF: pp->name=name
-skip nodes without reg property
-for_each_available_child_of_node done
-OF: pp->name=reg
-OF: pp->name=remote-endpoint
-OF: pp->name=phandle
-OF: pp->name=name
-OF: pp->name=reg
-OF: pp->name=remote-endpoint
-OF: pp->name=phandle
-OF: pp->name=name
-OF: pp->name=remote-endpoint
-OF: pp->name=compatible
-OF: pp->name=reg
-OF: pp->name=reset-gpios
-OF: pp->name=power-supply
-OF: pp->name=status
-OF: pp->name=compatible
-OF: pp->name=reg
-OF: pp->name=reset-gpios
-OF: pp->name=power-supply
-OF: pp->name=status
-OF: pp->name=compatible
-OF: pp->name=compatible
-OF: pp->name=compatible
-OF: pp->name=compatible
 
-<stdout>: Warning (avoid_unnecessary_addr_size): /soc/dsi@5a000000: unnecessary #address-cells/#size-cells without "ranges" or child "reg" property
-
-for_each_available_child_of_node done
-OF: graph: no port node found in /soc/dsi@5a000000/ports
-
-
-
-struct mipi_dsi_host *host;
-struct mipi_dsi_host *host
-
-
-static int rpi_touchscreen_probe(struct i2c_client *i2c,
-				 const struct i2c_device_id *id)
-{
-	struct device *dev = &i2c->dev;
-	struct rpi_touchscreen *ts;
-	struct device_node *endpoint, *dsi_host_node;
-	struct mipi_dsi_host *host;
-	int ver;
-	struct mipi_dsi_device_info info = {
-		.type = RPI_DSI_DRIVER_NAME,
-		.channel = 0,
-		.node = NULL,
-	};
-	printk("rpi_touchscreen_probe be called...\n");
-
-	ts = devm_kzalloc(dev, sizeof(*ts), GFP_KERNEL);
-	if (!ts)
-	{
-		return -ENOMEM;
-	}
-
-	i2c_set_clientdata(i2c, ts);
-
-	ts->i2c = i2c;
-
-	ver = rpi_touchscreen_i2c_read(ts, REG_ID);
-	if (ver < 0)
-		ver = rpi_touchscreen_i2c_read(ts, REG_ID);
-	if (ver < 0) {
-		dev_err(dev, "Atmel I2C read failed: %d\n", ver);
-		return -ENODEV;
-	}
-
-	switch (ver) {
-	case 0xde: /* ver 1 */
-	case 0xc3: /* ver 2 */
-		break;
-	default:
-		dev_err(dev, "Unknown Atmel firmware revision: 0x%02x\n", ver);
-		return -ENODEV;
-	}
-
-	/* Turn off at boot, so we can cleanly sequence powering on. */
-	rpi_touchscreen_i2c_write(ts, REG_POWERON, 1);
-
-	/* Turn on the backlight. */
-	rpi_touchscreen_i2c_write(ts, REG_PWM, 255);
-
-	printk("open REG_PWM\n");
-
-	/* Look up the DSI host.  It needs to probe before we do. */
-	endpoint = of_graph_get_next_endpoint(dev->of_node, NULL);
-	if (!endpoint)
-	{
-		return -ENODEV;
-	}
-		
-	printk("endpoint = %pOF\n",endpoint);
-
-	dsi_host_node = of_graph_get_remote_port_parent(endpoint);
-	if (!dsi_host_node)
-	{
-		goto error;
-	}
-
-	printk("dsi_host_node = %pOF\n",dsi_host_node);
-
-#if 1
-	host = of_find_mipi_dsi_host_by_node(dsi_host_node);
-	of_node_put(dsi_host_node);
-	if (!host) {
-		of_node_put(endpoint);
-		printk("of_find_mipi_dsi_host_by_node fail\n");
-		return -EPROBE_DEFER;
-	}
-#endif
-
-
-#if 0
-	info.node = of_graph_get_remote_port(endpoint);
-	if (!info.node)
-	{
-		printk("of_graph_get_remote_port fail\n");
-		goto error;
-	}
-
-	of_node_put(endpoint);
-
-
-	ts->dsi = mipi_dsi_device_register_full(host, &info);
-	if (IS_ERR(ts->dsi)) {
-		dev_err(dev, "DSI device registration failed: %ld\n",
-			PTR_ERR(ts->dsi));
-		return PTR_ERR(ts->dsi);
-	}
-#endif
-
-	drm_panel_init(&ts->base, dev, &rpi_touchscreen_funcs,
-		       DRM_MODE_CONNECTOR_DSI);
-
-	/* This appears last, as it's what will unblock the DSI host
-	 * driver's component bind function.
-	 */
-	drm_panel_add(&ts->base);
-
-	printk("pi_touchscreen_probe success\n");
-	return 0;
-
-error:
-	of_node_put(endpoint);
-	return -ENODEV;
-}
-
-
-
-
-panel.c  
-static int panel_bridge_attach(struct drm_bridge *bridge,
-			       enum drm_bridge_attach_flags flags)
-|
-drm_bridge.c
-drm_bridge_attach(struct drm_encoder *encoder, struct drm_bridge *bridge,
-		      struct drm_bridge *previous,
-		      enum drm_bridge_attach_flags flags)
-|
-dw-mipi-dsi.c
-static int dw_mipi_dsi_bridge_attach(struct drm_bridge *bridge,
-				     enum drm_bridge_attach_flags flags)
-
-
-[09-19-25.698][  OK  ] Mounted Kernel Configuration File System.
-[09-19-25.716][    7.835632] systemd[1]: Started Apply Kernel Variables.
-[09-19-25.732][  OK  ] Started Apply Kernel Variables.
-[09-19-25.820][    7.934602] systemd[1]: Started File System Check on Root Device.
-[09-19-25.831][  OK  ] Started File System Check on Root Device.
-[09-19-25.848][    7.958461] systemd[1]: Starting Remount Root and Kernel File Systems...
-[09-19-25.865][    7.980311] EXT4-fs (mmcblk0p4): recovery complete
-[09-19-25.869][    7.984052] EXT4-fs (mmcblk0p4): mounted filesystem with ordered data mode. Opts: (null)
-[09-19-25.881]         Starting Remount Root and Kernel File Systems...
-[09-19-25.899][    8.011153] ext4 filesystem being mounted at /boot supports timestamps until 2038 (0x7fffffff)
-[09-19-25.954][    8.069451] systemd[1]: Started Journal Service.
-[09-19-25.987][  OK  ] Started Journal Service.
-[09-19-26.026][    8.140935] EXT4-fs (mmcblk0p5): re-mounted. Opts: (null)
-[09-19-26.133][  OK  ] Started Remount Root and Kernel File Systems.
-[09-19-26.172][  OK  ] Started Starts Psplash Boot screen.
-[09-19-26.231][    8.345794] [rpi_touchscreen_get_modes] mode num = 4
-[09-19-26.264][    8.375475] [dw_mipi_dsi_bridge_mode_set] bridge node is /soc/dsi@5a000000 
-[09-19-26.264][    8.375496] dw_mipi_dsi_mode_set be called
-[09-19-26.271]         Starting Flush Journal to Persistent Storage...
-[09-19-26.281][    8.393829] mode_flags = 0, lanes = 0, format = 0, lane_mbps = 0
-[09-19-26.282][    8.398568] dw_mipi_dsi_get_lane_mbps be call...
-[09-19-26.315]         Starting Create Static Device Nodes in /dev...
-[09-19-26.331][    8.446590] [dw_mipi_dsi_get_lane_mbps] mode->clock = 25826,bpp = 24
-[09-19-26.363][    8.476894] [drm] pll_out_khz = 0
-[09-19-26.363][    8.478764] [drm] Warning min phy mbps is used
-[09-19-26.385][    8.501873] systemd-journald[142]: Received client request to flush runtime journal.
-[09-19-26.398][    8.502872] pll_in 24000kHz pll_out 63000kHz lane_mbps 63MHz
-[09-19-26.404][  OK  ] Started Flush Journal to Persistent Storage.
-[09-19-26.446][    8.560920] [dw_mipi_dsi_get_lane_mbps] success...
-[09-19-26.449][    8.567742] [dw_mipi_dsi_phy_init] success
-[09-19-26.526][    8.640968] [dw_mipi_dsi_mode_set] finish
-[09-19-26.555][  OK  ] Started Create Static Device Nodes in /dev.0379] 8<--- cut here ---
-[09-19-26.555]
-[09-19-26.564][    8.676929] Unable to handle kernel NULL pointer dereference at virtual address 000001e4
-[09-19-26.587][  OK  ] Reached target Local File Systems (Pre).
-[09-19-26.598][    8.710894] pgd = 900d97e6
-[09-19-26.598][    8.712166] [000001e4] *pgd=c3453835, *pte=00000000, *ppte=00000000
-[09-19-26.602][    8.718469] Internal error: Oops: 17 [#1] PREEMPT SMP ARM
-[09-19-26.604][    8.723867] Modules linked in:
-[09-19-26.614][    8.726931] CPU: 0 PID: 188 Comm: psplash-drm Not tainted 5.10.10-gfde92c7681c1-dirty #87
-[09-19-26.618][    8.735118] Hardware name: STM32 (Device Tree Support)
-[09-19-26.631][    8.740260] PC is at mipi_dsi_generic_write+0x8/0xa4
-[09-19-26.631][    8.745223] LR is at rpi_touchscreen_enable+0xa4/0x2ac
-[09-19-26.635][    8.750364] pc : [<c0709a30>]    lr : [<c0711b00>]    psr: 200e0113
-[09-19-26.647][    8.756645] sp : c3421d04  ip : c1ab0d80  fp : 00000050
-[09-19-26.648][    8.761880] r10: 00000010  r9 : 00000002  r8 : 00000064
-[09-19-26.652][    8.767116] r7 : 00000005  r6 : 00000001  r5 : c1c3d1c0  r4 : 00000000
-[09-19-26.664][    8.773660] r3 : 00000003  r2 : 00000006  r1 : c3421d0e  r0 : 00000000
-[09-19-26.666][    8.780207] Flags: nzCv  IRQs on  FIQs on  Mode SVC_32  ISA ARM  Segment none
-[09-19-26.671][    8.787360] Control: 10c5387d  Table: c326406a  DAC: 00000051
-[09-19-26.681][    8.793125] Process psplash-drm (pid: 188, stack limit = 0xe5904c80)
-[09-19-26.682][    8.799490] Stack: (0xc3421d04 to 0xc3422000)
-[09-19-26.697][    8.803859] 1d00:          c0711b00 0331ad4f 02100002 00000003 c1104d08 c2b1e840 c1c3d1c0
-[09-19-26.699][    8.812062] 1d20: c307ac40 c2a761c0 c2a761c0 c0e4fa8c c1a38840 c0ca4a3c 00000001 c0707280
-[09-19-26.705][    8.820265] 1d40: c1e1d840 c307ac40 c2a761c0 c06e9ae4 00000000 c307ac40 00000000 c06cd6f4
-
-
-[09-44-48.853][   11.619034] [dw_mipi_dsi_phy_init] success
-[09-44-48.856][  OK  ] Started Flush Journal to Persistent Storage.
-[09-44-48.904][  OK  ] Started Create Static Device Nodes in /dev.
-[09-44-48.923][  OK  ] Reached target Local File Systems (Pre).
-[09-44-48.923][   11.690402] [dw_mipi_dsi_mode_set] finish
-[09-44-48.923][   11.693037] 8<--- cut here ---
-[09-44-48.937][   11.696022] Unable to handle kernel NULL pointer dereference at virtual address 0000019c
-[09-44-48.954]         Mounting /var/volatile...
-[09-44-48.954][   11.723973] pgd = 66748a1c
-[09-44-48.956][   11.726661] [0000019c] *pgd=c328a835, *pte=00000000, *ppte=00000000
-[09-44-48.988][   11.759133] Internal error: Oops: 17 [#1] PREEMPT SMP ARM
-[09-44-48.990][   11.763115] Modules linked in:
-[09-44-49.004][   11.766178] CPU: 1 PID: 228 Comm: psplash-drm Not tainted 5.10.10-gfde92c7681c1-dirty #88
-[09-44-49.004][   11.774343] Hardware name: STM32 (Device Tree Support)
-[09-44-49.022][   11.779507] PC is at rpi_touchscreen_enable+0x40/0x2c8
-[09-44-49.022][   11.784666] LR is at drm_panel_enable+0x28/0xd4
-[09-44-49.023][   11.789196] pc : [<c0b86c1c>]    lr : [<c0707280>]    psr: a00f0113
-[09-44-49.024][   11.795454] sp : c32c1d08  ip : c0eab354  fp : 00000001
-[09-44-49.036][   11.800684] r10: c0ca4a3c  r9 : c1a4a840  r8 : c0e4fa8c
-[09-44-49.037][   11.805918] r7 : c2a741c0  r6 : c2a741c0  r5 : c283c240  r4 : c283c240
-[09-44-49.053][   11.812461] r3 : 00000000  r2 : 00000000  r1 : c2824840  r0 : c0e59fe4
-[09-44-49.053][   11.819030] Flags: NzCv  IRQs on  FIQs on  Mode SVC_32  ISA ARM  Segment none
-[09-44-49.055][   11.826156] Control: 10c5387d  Table: c4bf806a  DAC: 00000051
-[09-44-49.070][   11.831922] Process psplash-drm (pid: 228, stack limit = 0x4e4735e0)
-[09-44-49.070][   11.838305] Stack: (0xc32c1d08 to 0xc32c2000)
-[09-44-49.088][   11.842662] 1d00:                   b8fc5f90 00000002 00000000 c1104d08 c2a86440 c283c240
-[09-44-49.089][   11.850873] 1d20: c32fbcc0 c2a741c0 c2a741c0 c0e4fa8c c1a4a840 c0ca4a3c 00000001 c0707280
-[09-44-49.103][   11.859058] 1d40: c2824840 c32fbcc0 c2a741c0 c06e9ae4 00000000 c32fbcc0 00000000 c06cd6f4
-[09-44-49.103][   11.867237] 1d60: c32fbcc0 c2940400 00000002 00000000 00000000 c3353700 c4557980 c06ce8a4
-[09-44-49.120][   11.875452] 1d80: c32fbcc0 ae59b76d 00000002 c06cef40 c32fbcc0 00000000 c2940400 00000000
-[09-44-49.120][   11.883649] 1da0: c335a480 c06cfc4c c32fbcc0 00000000 c32c1e1c c32fb040 c335a480 c06cedf0
-[09-44-49.122][   11.891861] 1dc0: 00000000 c32c1edc c2940400 c06dbf00 c335a480 c10677d5 c10677a8 c32c1edc
-[09-44-49.137][   11.900033] 1de0: c1a3a040 c2a86440 c2a86474 00000020 c32c0000 c32fb040 c4557980 00000000
-[09-44-49.138][   11.908233] 1e00: c335a480 c2a86440 c4557980 00000000 00000000 c32fb040 00000001 c3236540
-[09-44-49.154][   11.916464] 1e20: 00000002 00000005 00000000 00000000 c2824860 c2940518 00000100 c2940400
-[09-44-49.155][   11.924632] 1e40: cccccccc c2940524 00000023 00000000 c2a86474 c06e6fbc c32c1edc c1104d08
-[09-44-49.172][   11.932830] 1e60: c3353700 00000000 c2940400 00000002 c06dbd1c c32c1edc c3353700 bef78bf8
-[09-44-49.172][   11.941029] 1e80: 00000068 c06d7120 00000000 c1104d08 c06864a2 00000068 c0c9a15c c06864a2
-[09-44-49.187][   11.949228] 1ea0: c32c1edc 000000a2 c3353700 c06d7354 0000e200 00000001 c0e51fd0 c010fc40
-[09-44-49.189][   11.957426] 1ec0: 00000001 c32c1edc 00000068 c40c3840 c06dbd1c 00000051 00000000 0003b49c
-[09-44-49.203][   11.965623] 1ee0: 00000000 00000001 00000023 00000026 00000000 00000000 00000000 00000001
-[09-44-49.205][   11.973821] 1f00: 00006506 03210320 03500323 01e00000 01e901e7 000001fd 0000003c 00000000
-[09-44-49.221][   11.982019] 1f20: 00000048 78303038 00303834 00000000 00000000 00000000 00000000 00000000
-[09-44-49.222][   11.990218] 1f40: 00000000 00000800 00000255 c0114a58 00000000 c32c1f54 c32c1f54 c1104d08
-[09-44-49.239][   11.998417] 1f60: c1894200 fffffdfd c40c3840 c06864a2 bef78bf8 c40c3840 fffffdfd 00000036
-[09-44-49.239][   12.006616] 1f80: 00000000 c03031b0 00000004 bef78bf8 c06864a2 00000036 c0100264 c32c0000
-[09-44-49.256][   12.014814] 1fa0: 00000036 c0100060 00000004 bef78bf8 00000004 c06864a2 bef78bf8 00000001
-[09-44-49.256][   12.023012] 1fc0: 00000004 bef78bf8 c06864a2 00000036 00000026 00000023 00028efa 00000000
-[09-44-49.268][   12.031210] 1fe0: 4168a094 bef78bdc 416745ef 410c6118 000e0030 00000004 00000000 00000000
-[09-44-49.272][   12.039434] [<c0b86c1c>] (rpi_touchscreen_enable) from [<c0707280>] (drm_panel_enable+0x28/0xd4)
 
 * seeed
 Encoders:
@@ -1100,4 +819,609 @@ enum nl802154_cca_opts {
 ## 802.15.4/
 * 名次的理解
 	+ promiscuous mode:	混杂模式又叫偷听模式，指一台机器的网卡能够接收所有经过它的数据流，而不论其目的地址是否是它。
+
+
+## 
+~/github/beagleconnect/sw (master) $ ./flash-cc1352-sensortest.sh 
+#!/bin/bash -ve
+export PORT=${1:-/dev/tty.usbmodem141301}
+export PROJECT=${2:-build/sensortest_beagleconnect}
+#export PROJECT=${2:-build/sensortest_beagleconnect_2G}
+export SWDIR="$( cd "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
+ cd "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P 
+dirname "$0"
+export ZEPHYR_TOOLCHAIN_VARIANT=${ZEPHYR_TOOLCHAIN_VARIANT:-gnuarmemb}
+#export ZEPHYR_SDK_INSTALL_DIR=${ZEPHYR_SDK_INSTALL_DIR:-~/zephyr-sdk-0.11.4}
+export GNUARMEMB_TOOLCHAIN_PATH=${GNUARMEMB_TOOLCHAIN_PATH:-/Users/chenxiaonian/tool/gcc-arm-none-eabi-10.3-2021.07-mac-10.14.6/gcc-arm-none-eabi-10.3-2021.07}
+export ZEPHYR_BASE=${ZEPHYR_BASE:-$SWDIR/zephyrproject/zephyr}
+
+
+
+sudo pkill -KILL appstreamcli
+wget -P /tmp https://launchpad.net/ubuntu/+archive/primary/+files/appstream_0.9.4-1ubuntu1_amd64.deb https://launchpad.net/ubuntu/+archive/primary/+files/libappstream3_0.9.4-1ubuntu1_amd64.deb
+sudo dpkg -i /tmp/appstream_0.9.4-1ubuntu1_amd64.deb /tmp/libappstream3_0.9.4-1ubuntu1_amd64.deb
+
+
+
+## beagleconnect 测试命令
+1. 烧录430固件
+	sudo python2 -m msp430.bslS.hid_1 -e -P usb_uart_bridge.hex
+2. 烧录 cc1352p 固件
+	python3 cc2538-bsl.py zephyr.bin /dev/ttyACM0
+
+3. 每秒自动测试led，buzzer
+
+4. 测试flash
+	flash erase GD25Q16C 0
+	flash write GD25Q16C 0 0x1234
+	flash read GD25Q16C 0 4
+5. 检测i2c设备
+	i2c scan I2C_0
+
+6. 按键
+
+7. IO
+	gpio conf GPIO_0 18 out
+	gpio set GPIO_0 18 1
+
+8. uart
+	两个板子tx ，rx交接或 短接同一板子的tx、rx？
+
+
+# 周记
+1. 熟悉 beagleconnect ,zephyr os 相关
+2. 调试 ads1115 驱动
+3. cc1352 i2c相关调试
+4. 帮国庆检测 beagleconnect_freedom 板子，顺便熟悉相关的传感器
+
+
+
+###
+
+* 1.3V
+[00:00:59.984,558] <inf> ads1115: salver_addr 0x48 get ain0 value 0x0000
+[00:01:00.036,865] <inf> ads1115: salver_addr 0x48 get ain1 value 0x047d
+[00:01:00.089,172] <inf> ads1115: salver_addr 0x48 get ain2 value 0x0000
+[00:01:00.141,510] <inf> ads1115: salver_addr 0x48 get ain3 value 0x0b48
+
+
+[00:01:44.027,099] <inf> ads1115: salver_addr 0x49 get ain0 value 0x0000
+[00:01:44.079,467] <inf> ads1115: salver_addr 0x49 get ain1 value 0x047d
+[00:01:44.131,805] <inf> ads1115: salver_addr 0x49 get ain2 value 0x0000
+[00:01:44.184,112] <inf> ads1115: salver_addr 0x49 get ain3 value 0x0b4a
+
+
+[00:02:06.115,081] <inf> ads1115: salver_addr 0x4b get ain0 value 0x0000
+[00:02:06.167,388] <inf> ads1115: salver_addr 0x4b get ain1 value 0x047e
+[00:02:06.219,696] <inf> ads1115: salver_addr 0x4b get ain2 value 0x0000
+[00:02:06.272,155] <inf> ads1115: salver_addr 0x4b get ain3 value 0x0b38
+
+* 2.6V
+[00:02:35.341,247] <inf> ads1115: salver_addr 0x4b get ain0 value 0x0000
+[00:02:35.393,554] <inf> ads1115: salver_addr 0x4b get ain1 value 0x0902
+[00:02:35.445,892] <inf> ads1115: salver_addr 0x4b get ain2 value 0x0000
+[00:02:35.498,352] <inf> ads1115: salver_addr 0x4b get ain3 value 0x0b36
+
+[00:03:00.868,194] <inf> ads1115: salver_addr 0x49 get ain0 value 0x0000
+[00:03:00.920,562] <inf> ads1115: salver_addr 0x49 get ain1 value 0x0900
+[00:03:00.972,900] <inf> ads1115: salver_addr 0x49 get ain2 value 0x0000
+[00:03:01.025,207] <inf> ads1115: salver_addr 0x49 get ain3 value 0x0b4d
+
+[00:03:24.550,201] <inf> ads1115: salver_addr 0x48 get ain0 value 0x0000
+[00:03:24.602,508] <inf> ads1115: salver_addr 0x48 get ain1 value 0x08ff
+[00:03:24.654,815] <inf> ads1115: salver_addr 0x48 get ain2 value 0x0000
+[00:03:24.707,122] <inf> ads1115: salver_addr 0x48 get ain3 value 0x0b48
+
+* 3.9V
+[00:06:19.466,491] <inf> ads1115: salver_addr 0x48 get ain0 value 0x0000
+[00:06:19.518,798] <inf> ads1115: salver_addr 0x48 get ain1 value 0x0d80
+[00:06:19.571,105] <inf> ads1115: salver_addr 0x48 get ain2 value 0x0000
+[00:06:19.623,413] <inf> ads1115: salver_addr 0x48 get ain3 value 0x0b4c
+
+[00:06:47.810,485] <inf> ads1115: salver_addr 0x49 get ain0 value 0x0000
+[00:06:47.862,854] <inf> ads1115: salver_addr 0x49 get ain1 value 0x0d83
+[00:06:47.915,191] <inf> ads1115: salver_addr 0x49 get ain2 value 0x0000
+[00:06:47.967,498] <inf> ads1115: salver_addr 0x49 get ain3 value 0x0b49
+
+[00:07:01.130,981] <inf> ads1115: salver_addr 0x4b get ain0 value 0x0000
+[00:07:01.183,319] <inf> ads1115: salver_addr 0x4b get ain1 value 0x0d84
+[00:07:01.235,626] <inf> ads1115: salver_addr 0x4b get ain2 value 0xffff
+[00:07:01.288,085] <inf> ads1115: salver_addr 0x4b get ain3 value 0x0b36
+
+
+* 2V
+[00:07:33.338,623] <inf> ads1115: salver_addr 0x4b get ain0 value 0x0000
+[00:07:33.390,960] <inf> ads1115: salver_addr 0x4b get ain1 value 0x06ec
+[00:07:33.443,267] <inf> ads1115: salver_addr 0x4b get ain2 value 0x0000
+[00:07:33.495,727] <inf> ads1115: salver_addr 0x4b get ain3 value 0x0b36
+
+
+
+[00:00:05.891,448] <inf> i2c_cc13xx_cc26xx: I2CMaster base = 0x40002000 
+
+
+
+
+/*z*/
+*** Booting Zephyr OS build v2.6.0-rc1-ncs1  ***Flash regionsDomainPermissions00 01 0x00000 0x10000 Securerwxl02 31 0x10000 0x100000 Non-SecurerwxlNon-secure callable region 0 placed in flash region 1 with size 32.SRAM regionDomainPermissions00 07 0x00000 0x10000 Securerwxl08 31 0x10000 0x40000 Non-SecurerwxlPeripheralDomainStatus00 NRF_P0               Non-SecureOK01 NRF_CLOCK            Non-SecureOK02 NRF_RTC0             Non-SecureOK03 NRF_RTC1             Non-SecureOK04 NRF_NVMC             Non-SecureOK05 NRF_UARTE1           Non-SecureOK06 NRF_UARTE2           SecureSKIP07 NRF_TWIM2            Non-SecureOK08 NRF_SPIM3            Non-SecureOK09 NRF_TIMER0           Non-SecureOK10 NRF_TIMER1           Non-SecureOK11 NRF_TIMER2           Non-SecureOK12 NRF_SAADC            Non-SecureOK13 NRF_PWM0             Non-SecureOK14 NRF_PWM1             Non-SecureOK15 NRF_PWM2             Non-SecureOK16 NRF_PWM3             Non-SecureOK17 NRF_WDT              Non-SecureOK18 NRF_IPC              Non-SecureOK19 NRF_VMC              Non-SecureOK20 NRF_FPU              Non-SecureOK21 NRF_EGU1             Non-SecureOK22 NRF_EGU2             Non-SecureOK23 NRF_DPPIC            Non-SecureOK24 NRF_REGULATORS       Non-SecureOK25 NRF_PDM              Non-SecureOK26 NRF_I2S              Non-SecureOK27 NRF_GPIOTE1          Non-SecureOKSPM: NS image at 0x10000SPM: NS MSP at 0x2001c908SPM: NS reset vector at 0x13299SPM: prepare to jump to Non-Secure image.*** Booting Zephyr OS build v2.6.0-rc1-ncs1  ***
+
+/*c*/
+*** Booting Zephyr OS build v2.6.0-rc1-ncs1  ***Flash regionsDomainPermissions00 01 0x00000 0x10000 Securerwxl02 31 0x10000 0x100000 Non-SecurerwxlNon-secure callable region 0 placed in flash region 1 with size 32.SRAM regionDomainPermissions00 07 0x00000 0x10000 Securerwxl08 31 0x10000 0x40000 Non-SecurerwxlPeripheralDomainStatus00 NRF_P0               Non-SecureOK01 NRF_CLOCK            Non-SecureOK02 NRF_RTC0             Non-SecureOK03 NRF_RTC1             Non-SecureOK04 NRF_NVMC             Non-SecureOK05 NRF_UARTE1           Non-SecureOK06 NRF_UARTE2           SecureSKIP07 NRF_TWIM2            Non-SecureOK08 NRF_SPIM3            Non-SecureOK09 NRF_TIMER0           Non-SecureOK10 NRF_TIMER1           Non-SecureOK11 NRF_TIMER2           Non-SecureOK12 NRF_SAADC            Non-SecureOK13 NRF_PWM0             Non-SecureOK14 NRF_PWM1             Non-SecureOK15 NRF_PWM2             Non-SecureOK16 NRF_PWM3             Non-SecureOK17 NRF_WDT              Non-SecureOK18 NRF_IPC              Non-SecureOK19 NRF_VMC              Non-SecureOK20 NRF_FPU              Non-SecureOK21 NRF_EGU1             Non-SecureOK22 NRF_EGU2             Non-SecureOK23 NRF_DPPIC            Non-SecureOK24 NRF_REGULATORS       Non-SecureOK25 NRF_PDM              Non-SecureOK26 NRF_I2S              Non-SecureOK27 NRF_GPIOTE1          Non-SecureOKSPM: NS image at 0x10000SPM: NS MSP at 0x2001c788SPM: NS reset vector at 0x12eadSPM: prepare to jump to Non-Secure image.*** Booting Zephyr OS build v2.6.0-rc1-ncs1  ***The AT host sample started
+
+
+
+
+
+2021-10-04T20:33:35.845Z DEBUG modem >> AT+CFUN?
+2021-10-04T20:33:40.936Z DEBUG modem >> AT+CFUN=1
+2021-10-04T20:33:42.588Z DEBUG modem >> AT+CFUN?
+2021-10-04T20:33:42.600Z DEBUG modem >> AT+CGSN=1
+2021-10-04T20:33:42.617Z DEBUG modem >> AT+CGMI
+2021-10-04T20:33:42.634Z DEBUG modem >> AT+CGMM
+2021-10-04T20:33:42.651Z DEBUG modem >> AT+CGMR
+2021-10-04T20:33:42.667Z DEBUG modem >> AT+CEMODE?
+2021-10-04T20:33:42.684Z DEBUG modem >> AT%XCBAND=?
+2021-10-04T20:33:42.701Z DEBUG modem >> AT+CMEE?
+2021-10-04T20:33:42.718Z DEBUG modem >> AT+CMEE=1
+2021-10-04T20:33:42.733Z DEBUG modem >> AT+CNEC?
+2021-10-04T20:33:42.749Z DEBUG modem >> AT+CNEC=24
+2021-10-04T20:33:42.757Z DEBUG modem >> AT+CGEREP?
+2021-10-04T20:33:42.768Z DEBUG modem >> AT+CGDCONT?
+2021-10-04T20:33:42.781Z DEBUG modem >> AT+CGACT?
+2021-10-04T20:33:42.809Z DEBUG modem >> AT+CGEREP=1
+2021-10-04T20:33:42.818Z DEBUG modem >> AT+CIND=1,1,1
+2021-10-04T20:33:42.834Z DEBUG modem >> AT+CEREG=5
+2021-10-04T20:33:42.848Z DEBUG modem >> AT+CEREG?
+2021-10-04T20:33:42.869Z DEBUG modem >> AT%CESQ=1
+2021-10-04T20:33:42.884Z DEBUG modem >> AT+CESQ
+2021-10-04T20:33:42.901Z DEBUG modem >> AT%XSIM=1
+2021-10-04T20:33:42.914Z DEBUG modem >> AT%XSIM?
+2021-10-04T20:33:42.932Z DEBUG modem >> AT+CPIN?
+2021-10-04T20:33:42.951Z DEBUG modem >> AT+CPINR="SIM PIN"
+2021-10-04T20:33:42.969Z DEBUG modem >> AT+CIMI
+2021-10-04T20:33:45.269Z DEBUG modem >> AT+CGDCONT?
+2021-10-04T20:33:45.298Z DEBUG modem >> AT+CGACT?
+
+
+
+2021-10-04T20:33:28.444Z DEBUG modem << The AT host sample started
+2021-10-04T20:33:35.829Z INFO Modem port is closed
+2021-10-04T20:33:35.839Z INFO Modem port is opened
+2021-10-04T20:33:35.845Z DEBUG modem >> AT+CFUN?
+2021-10-04T20:33:35.860Z DEBUG modem << +CFUN: 0
+2021-10-04T20:33:35.861Z DEBUG modem << OK
+2021-10-04T20:33:40.936Z DEBUG modem >> AT+CFUN=1
+2021-10-04T20:33:40.978Z DEBUG modem << OK
+2021-10-04T20:33:42.588Z DEBUG modem >> AT+CFUN?
+2021-10-04T20:33:42.596Z DEBUG modem << +CFUN: 1
+2021-10-04T20:33:42.599Z DEBUG modem << OK
+2021-10-04T20:33:42.600Z DEBUG modem >> AT+CGSN=1
+2021-10-04T20:33:42.613Z DEBUG modem << +CGSN: "352656109853344"
+2021-10-04T20:33:42.614Z DEBUG modem << OK
+2021-10-04T20:33:42.617Z DEBUG modem >> AT+CGMI
+2021-10-04T20:33:42.630Z DEBUG modem << Nordic Semiconductor ASA
+2021-10-04T20:33:42.631Z DEBUG modem << OK
+2021-10-04T20:33:42.634Z DEBUG modem >> AT+CGMM
+2021-10-04T20:33:42.646Z DEBUG modem << nRF9160-SICA
+2021-10-04T20:33:42.648Z DEBUG modem << OK
+2021-10-04T20:33:42.651Z DEBUG modem >> AT+CGMR
+2021-10-04T20:33:42.663Z DEBUG modem << mfw_nrf9160_1.2.3
+2021-10-04T20:33:42.664Z DEBUG modem << OK
+2021-10-04T20:33:42.665Z INFO Nordic Semiconductor ASA nRF9160-SICA [mfw_nrf9160_1.2.3] SerNr: 352656109853344
+2021-10-04T20:33:42.667Z DEBUG modem >> AT+CEMODE?
+2021-10-04T20:33:42.680Z DEBUG modem << +CEMODE: 2
+2021-10-04T20:33:42.681Z DEBUG modem << OK
+2021-10-04T20:33:42.684Z DEBUG modem >> AT%XCBAND=?
+2021-10-04T20:33:42.697Z DEBUG modem << %XCBAND: (1,2,3,4,5,8,12,13,18,19,20,25,26,28,66)
+2021-10-04T20:33:42.698Z DEBUG modem << OK
+2021-10-04T20:33:42.701Z DEBUG modem >> AT+CMEE?
+2021-10-04T20:33:42.714Z DEBUG modem << +CMEE: 0
+2021-10-04T20:33:42.715Z DEBUG modem << OK
+2021-10-04T20:33:42.718Z DEBUG modem >> AT+CMEE=1
+2021-10-04T20:33:42.730Z DEBUG modem << OK
+2021-10-04T20:33:42.733Z DEBUG modem >> AT+CNEC?
+2021-10-04T20:33:42.741Z DEBUG modem << +CNEC: 0
+2021-10-04T20:33:42.742Z DEBUG modem << OK
+2021-10-04T20:33:42.749Z DEBUG modem >> AT+CNEC=24
+2021-10-04T20:33:42.755Z DEBUG modem << OK
+2021-10-04T20:33:42.757Z DEBUG modem >> AT+CGEREP?
+2021-10-04T20:33:42.764Z DEBUG modem << +CGEREP: 0,0
+2021-10-04T20:33:42.765Z DEBUG modem << OK
+2021-10-04T20:33:42.768Z DEBUG modem >> AT+CGDCONT?
+2021-10-04T20:33:42.774Z DEBUG modem << OK
+2021-10-04T20:33:42.781Z DEBUG modem >> AT+CGACT?
+2021-10-04T20:33:42.787Z DEBUG modem << OK
+2021-10-04T20:33:42.809Z DEBUG modem >> AT+CGEREP=1
+2021-10-04T20:33:42.815Z DEBUG modem << OK
+2021-10-04T20:33:42.818Z DEBUG modem >> AT+CIND=1,1,1
+2021-10-04T20:33:42.831Z DEBUG modem << OK
+2021-10-04T20:33:42.834Z DEBUG modem >> AT+CEREG=5
+2021-10-04T20:33:42.840Z DEBUG modem << OK
+2021-10-04T20:33:42.848Z DEBUG modem >> AT+CEREG?
+2021-10-04T20:33:42.864Z DEBUG modem << +CEREG: 5,4,"FFFE","FFFFFFFF",7,0,0,"00000000","00000000"
+2021-10-04T20:33:42.865Z DEBUG modem << OK
+2021-10-04T20:33:42.869Z DEBUG modem >> AT%CESQ=1
+2021-10-04T20:33:42.881Z DEBUG modem << OK
+2021-10-04T20:33:42.884Z DEBUG modem >> AT+CESQ
+2021-10-04T20:33:42.897Z DEBUG modem << +CESQ: 99,99,255,255,255,255
+2021-10-04T20:33:42.898Z DEBUG modem << OK
+2021-10-04T20:33:42.901Z DEBUG modem >> AT%XSIM=1
+2021-10-04T20:33:42.907Z DEBUG modem << OK
+2021-10-04T20:33:42.914Z DEBUG modem >> AT%XSIM?
+2021-10-04T20:33:42.921Z DEBUG modem << %XSIM: 1
+2021-10-04T20:33:42.922Z DEBUG modem << OK
+2021-10-04T20:33:42.932Z DEBUG modem >> AT+CPIN?
+2021-10-04T20:33:42.940Z DEBUG modem << +CPIN: READY
+2021-10-04T20:33:42.941Z DEBUG modem << OK
+2021-10-04T20:33:42.951Z DEBUG modem >> AT+CPINR="SIM PIN"
+2021-10-04T20:33:42.966Z DEBUG modem << +CPINR: "SIM PIN",3
+2021-10-04T20:33:42.967Z DEBUG modem << OK
+2021-10-04T20:33:42.969Z DEBUG modem >> AT+CIMI
+2021-10-04T20:33:42.981Z DEBUG modem << 3026xxxxxxx8958
+2021-10-04T20:33:42.982Z DEBUG modem << OK
+2021-10-04T20:33:42.984Z INFO IMSIdentity: 3026xxxxxxx8958
+2021-10-04T20:33:43.901Z DEBUG modem << %CESQ: 42,2,3,0
+2021-10-04T20:33:43.931Z DEBUG modem << +CEREG: 2,"2D83","01D11B0A",7,0,0,"11100000","11100000"
+2021-10-04T20:33:45.232Z DEBUG modem << +CGEV: ME PDN ACT 0,0
+2021-10-04T20:33:45.244Z DEBUG modem << +CNEC_ESM: 50,0
+2021-10-04T20:33:45.269Z DEBUG modem >> AT+CGDCONT?
+2021-10-04T20:33:45.272Z DEBUG modem << +CEREG: 1,"2D83","01D11B0A",7,,,"11100000","11100000"
+2021-10-04T20:33:45.274Z DEBUG modem << +CIND: "service",1
+2021-10-04T20:33:45.286Z DEBUG modem << +CGDCONT: 0,"IP","mnet.bell.ca.ioe","10.169.167.185",0,0
+2021-10-04T20:33:45.287Z DEBUG modem << OK
+2021-10-04T20:33:45.298Z DEBUG modem >> AT+CGACT?
+2021-10-04T20:33:45.306Z DEBUG modem << +CGACT: 0,1
+2021-10-04T20:33:45.306Z DEBUG modem << OK
+
+
+IMEI: 352656109498363
+PIN: 084922
+
+SIM卡
+eSIm: 893108052003577245
+PUK: 14800021
+PIN: 0000
+
+
+*** Booting Zephyr OS build v2.6.99-ncs1  ***
+Flash regions           Domain          Permissions
+00 01 0x00000 0x10000   Secure          rwxl
+02 31 0x10000 0x100000  Non-Secure      rwxl
+
+Non-secure callable region 0 placed in flash region 1 with size 32.
+
+SRAM region             Domain          Permissions
+00 07 0x00000 0x10000   Secure          rwxl
+08 31 0x10000 0x40000   Non-Secure      rwxl
+
+Peripheral              Domain          Status
+00 NRF_P0               Non-Secure      OK
+01 NRF_CLOCK            Non-Secure      OK
+02 NRF_RTC0             Non-Secure      OK
+03 NRF_RTC1             Non-Secure      OK
+04 NRF_NVMC             Non-Secure      OK
+05 NRF_UARTE1           Non-Secure      OK
+06 NRF_UARTE2           Secure          SKIP
+07 NRF_TWIM2            Non-Secure      OK
+08 NRF_SPIM3            Non-Secure      OK
+09 NRF_TIMER0           Non-Secure      OK
+10 NRF_TIMER1           Non-Secure      OK
+11 NRF_TIMER2           Non-Secure      OK
+12 NRF_SAADC            Non-Secure      OK
+13 NRF_PWM0             Non-Secure      OK
+14 NRF_PWM1             Non-Secure      OK
+15 NRF_PWM2             Non-Secure      OK
+16 NRF_PWM3             Non-Secure      OK
+17 NRF_WDT              Non-Secure      OK
+18 NRF_IPC              Non-Secure      OK
+19 NRF_VMC              Non-Secure      OK
+20 NRF_FPU              Non-Secure      OK
+21 NRF_EGU1             Non-Secure      OK
+22 NRF_EGU2             Non-Secure      OK
+23 NRF_DPPIC            Non-Secure      OK
+24 NRF_REGULATORS       Non-Secure      OK
+25 NRF_PDM              Non-Secure      OK
+26 NRF_I2S              Non-Secure      OK
+27 NRF_GPIOTE1          Non-Secure      OK
+
+SPM: NS image at 0x10000
+SPM: NS MSP at 0x2002c7a0
+SPM: NS reset vector at 0x26695
+SPM: prepare to jump to Non-Secure image.
+*** Booting Zephyr OS build v2.6.99-ncs1  ***
+
+MOSH version:       v1.7.0
+MOSH build id:      custom
+MOSH build variant: dev
+
+Initializing modemlib...
+
+
+mosh:~$ Initialized modemlib
+
+
+Network registration status: searching
+LTE cell changed: Cell ID: 47213885, Tracking area: 7462
+Currently active system mode: NB-IoT
+RRC mode: Connected
+mosh:~$ 
+mosh:~$ 
+PDN event: PDP context 0 activated
+Network registration status: Connected - home network
+PSM parameter update: TAU: -1, Active time: -1 seconds
+mosh:~$ 
+mosh:~$ 
+Modem config for system mode: NB-IoT - GNSS
+Modem config for LTE preference: No preference, automatically selected by the modem
+Currently active system mode: NB-IoT
+Modem FW version:      mfw_nrf9160_1.3.0
+Operator PLMN:        "46000"
+Current cell id:       47213885 (0x02D06D3D)
+Current band:          8
+Current rsrp:          52: -89dBm
+Current snr:           29: 4dB
+Mobile network time and date: 21/10/18,02:51:57+32
+Could not parse dns str for cid 0, err: -22
+PDP context info 1:
+  CID:                    0
+  PDN ID:                 0
+  PDP context active:     yes
+  PDP type:               IP
+  APN:                    cmiot
+  IPv4 MTU:               0
+  IPv4 address:           10.140.99.155
+  IPv6 address:           ::
+  IPv4 DNS address:       0.0.0.0, 0.0.0.0
+  IPv6 DNS address:       ::, ::
+mosh:~$ 
+RRC mode: Idle
+mosh:~$ ping -d 220.181.38.149
+Could not parse dns str for cid 0, err: -22
+Initiating ping to: 220.181.38.149
+Source IP addr: 10.140.99.155
+Destination IP addr: 220.181.38.149
+RRC mode: Connected
+Pinging 220.181.38.149 results: time=0.567secs, payload sent: 0, payload received 0
+Pinging 220.181.38.149 results: time=0.801secs, payload sent: 0, payload received 0
+Pinging 220.181.38.149 results: time=0.272secs, payload sent: 0, payload received 0
+Pinging 220.181.38.149 results: time=0.272secs, payload sent: 0, payload received 0
+
+Ping statistics for 220.181.38.149:
+    Packets: Sent = 4, Received = 4, Lost = 0 (0% loss)
+Approximate round trip times in milli-seconds:
+    Minimum = 272ms, Maximum = 801ms, Average = 478ms
+Pinging DONE
+mosh:~$ ping -d 14.215.177.38
+Could not parse dns str for cid 0, err: -22
+Initiating ping to: 14.215.177.38
+Source IP addr: 10.140.99.155
+Destination IP addr: 14.215.177.38
+Pinging 14.215.177.38 results: time=0.407secs, payload sent: 0, payload received 0
+Pinging 14.215.177.38 results: time=0.794secs, payload sent: 0, payload received 0
+Pinging 14.215.177.38 results: time=0.320secs, payload sent: 0, payload received 0
+Pinging 14.215.177.38 results: time=0.217secs, payload sent: 0, payload received 0
+
+Ping statistics for 14.215.177.38:
+    Packets: Sent = 4, Received = 4, Lost = 0 (0% loss)
+Approximate round trip times in milli-seconds:
+    Minimum = 217ms, Maximum = 794ms, Average = 434ms
+Pinging DONE
+RRC mode: Idle
+mosh:~$ 
+
+
+
+
+
+
+
+
+
+```C
+	ADC_REF_MV		49152	/* 4.096V * 12x divider * 1000mV/V */
+
+	adc_raw_to_millivolts(ADC_REF_MV, ADC_GAIN_1,16, &mv_value);
+		==>	
+			adc_mv = *mv_value * ADC_REF_MV;
+			adc_gain_invert(gain, &adc_mv);
+				==> adc_mv = adc_mv * 1/1;
+		==> 
+			adc_mv / 2^16
+```
+
+
+
+
+
+
+
+// trace_myself.h
+#undef TRACE_SYSTEM
+#define TRACE_SYSTEM myself
+#if !defined(__TRACE_MYSELF_H__) || defined(TRACE_HEADER_MULTI_READ)#define __TRACE_MYSELF_H__#include <linux/tracepoint.h> // 此处是非常关键的地方，设计到你要追踪的函数的的相关内容作为参数// 为了方便，这里将参数设置为unsiged short形式TRACE_EVENT(myself_tp,
+    TP_PROTO(unsigned short dest, unsigned short source),
+    TP_ARGS(dest, source), // 定义两参数名称为dest和source
+    TP_STRUCT__entry(  // 此处本人理解为打桩时候分配的环形队列时指定的作用域，说白了就是大小和attr。
+        __field(unsigned short, dest)
+        __field(unsigned short, source)
+    ),
+TP_fast_assign(
+    __entry->dest = dest;   //  将trace的函数的内容拷贝到环形队列中去
+    __entry->source = source;
+),
+
+TP_printk("dest:%d, source:%d", __entry->dest, __entry->source)  // 打印你所期望的内容
+);
+
+#endif // 此处定义完成后，仅仅是类型定义成功
+// 下一步我们需要指定头文件所在的目录，并且定义头文件的名称#undef TRACE_INCLUDE_PATH
+#define TRACE_INCLUDE_PATH .
+#define TRACE_INCLUDE_FILE trace_myself // 这就是该头文件的名字
+#include <trace/define_trace.h>
+
+
+
+
+BK9531:
+bk9531.c         319 [D] bk9531 reg = 0x38 , reg_value = 0x00000000
+bk9531.c         319 [D] bk9531 reg = 0x39 , reg_value = 0x03d7d5f7
+
+
+bk9531.c         319 [D] bk9531 reg = 0x38 , reg_value = 0x00000000
+bk9531.c         319 [D] bk9531 reg = 0x39 , reg_value = 0x03d7d5f7
+
+
+BK9532
+
+bk9532.c         879 [D] bk9532 reg = 0x38 , reg_value = 0x40d7d5f7
+bk9532.c         879 [D] bk9532 reg = 0x39 , reg_value = 0x00000000
+
+bk9532.c         879 [D] bk9532 reg = 0x38 , reg_value = 0x40d7d5f7
+bk9532.c         879 [D] bk9532 reg = 0x39 , reg_value = 0x00000000
+
+bk9532.c         879 [D] bk9532 reg = 0x38 , reg_value = 0x4fd7d5f7
+bk9532.c         879 [D] bk9532 reg = 0x39 , reg_value = 0x00000000
+
+
+bk9532.c         879 [D] bk9532 reg = 0x32 , reg_value = 0x20ff0f09
+
+
+/usr/bin/qemu-arm-static: ELF 64-bit LSB executable, x86-64, version 1 (GNU/Linux), statically linked, BuildID[sha1]=dbabf65e9839ab06800c13572926717ac0249c75, for GNU/Linux 3.2.0, stripped
+
+/usr/bin/qemu-arm-static: ELF 64-bit LSB executable, x86-64, version 1 (GNU/Linux), statically linked, for GNU/Linux 3.2.0, BuildID[sha1]=924679b2e711c1e6baf83e052ee913894bd03e33, stripped
+
+
+
+
+
+
+
+altbootcmd=run bootcmd
+arch=arm
+autoload=no
+baudrate=115200
+board=stm32mp1
+board_name=stm32mp135f-dk
+boot_a_script=load ${devtype} ${devnum}:${distro_bootpart} ${scriptaddr} ${prefix}${script}; source ${scriptaddr}
+boot_device=mmc
+boot_efi_binary=if fdt addr ${fdt_addr_r}; then bootefi bootmgr ${fdt_addr_r};else bootefi bootmgr ${fdtcontroladdr};fi;load ${devtype} ${devnum}:${distro_bootpart} ${kernel_addr_r} efi/boot/bootarm.efi; if fdt addr ${fdt_addr_r}; then bootefi ${kernel_addr_r} ${fdt_addr_r};else bootefi ${kernel_addr_r} ${fdtcontroladdr};fi
+boot_extlinux=sysboot ${devtype} ${devnum}:${distro_bootpart} any ${scriptaddr} ${prefix}${boot_syslinux_conf}
+boot_instance=0
+boot_net_usb_start=true
+boot_prefixes=/ /boot/
+boot_script_dhcp=boot.scr.uimg
+boot_scripts=boot.scr.uimg boot.scr
+boot_syslinux_conf=extlinux/extlinux.conf
+boot_targets=mmc0
+bootcmd=run bootcmd_stm32mp
+bootcmd_mmc0=devnum=0; run mmc_boot
+bootcmd_mmc1=devnum=1; run mmc_boot
+bootcmd_mmc2=devnum=2; run mmc_boot
+bootcmd_pxe=run boot_net_usb_start; dhcp; if pxe get; then pxe boot; fi
+bootcmd_stm32mp=echo "Boot over ${boot_device}${boot_instance}!";if test ${boot_device} = serial || test ${boot_device} = usb;then stm32prog ${boot_device} ${boot_instance}; else run env_check;if test ${boot_device} = mmc;then env set boot_targets "mmc${boot_instance}"; fi;if test ${boot_device} = nand || test ${boot_device} = spi-nand ;then env set boot_targets ubifs0; fi;if test ${boot_device} = nor;then env set boot_targets mmc0; fi;run distro_bootcmd;fi;
+bootcmd_ubifs0=devnum=0; run ubifs_boot
+bootcount=3
+bootdelay=3
+cpu=armv7
+distro_bootcmd=for target in ${boot_targets}; do run bootcmd_${target}; done
+efi_dtb_prefixes=/ /dtb/ /dtb/current/
+env_check=if env info -p -d -q; then env save; fi
+fdt_addr_r=0xc4000000
+fdtcontroladdr=dabf1ea0
+fdtfile=stm32mp135f-dk.dtb
+fdtoverlay_addr_r=0xc4100000
+kernel_addr_r=0xc2000000
+load_efi_dtb=load ${devtype} ${devnum}:${distro_bootpart} ${fdt_addr_r} ${prefix}${efi_fdtfile}
+loadaddr=0xc2000000
+mmc_boot=if mmc dev ${devnum}; then devtype=mmc; run scan_dev_for_boot_part; fi
+pxefile_addr_r=0xc4200000
+ramdisk_addr_r=0xc4400000
+scan_dev_for_boot=echo Scanning ${devtype} ${devnum}:${distro_bootpart}...; for prefix in ${boot_prefixes}; do run scan_dev_for_extlinux; run scan_dev_for_scripts; done;run scan_dev_for_efi;
+scan_dev_for_boot_part=part list ${devtype} ${devnum} -bootable devplist; env exists devplist || setenv devplist 1; for distro_bootpart in ${devplist}; do if fstype ${devtype} ${devnum}:${distro_bootpart} bootfstype; then run scan_dev_for_boot; fi; done; setenv devplist
+scan_dev_for_efi=setenv efi_fdtfile ${fdtfile}; if test -z "${fdtfile}" -a -n "${soc}"; then setenv efi_fdtfile ${soc}-${board}${boardver}.dtb; fi; for prefix in ${efi_dtb_prefixes}; do if test -e ${devtype} ${devnum}:${distro_bootpart} ${prefix}${efi_fdtfile}; then run load_efi_dtb; fi;done;if test -e ${devtype} ${devnum}:${distro_bootpart} efi/boot/bootarm.efi; then echo Found EFI removable media binary efi/boot/bootarm.efi; run boot_efi_binary; echo EFI LOAD FAILED: continuing...; fi; setenv efi_fdtfile
+scan_dev_for_extlinux=if test -e ${devtype} ${devnum}:${distro_bootpart} ${prefix}${boot_syslinux_conf}; then echo Found ${prefix}${boot_syslinux_conf}; run boot_extlinux; echo SCRIPT FAILED: continuing...; fi
+scan_dev_for_scripts=for script in ${boot_scripts}; do if test -e ${devtype} ${devnum}:${distro_bootpart} ${prefix}${script}; then echo Found U-Boot script ${prefix}${script}; run boot_a_script; echo SCRIPT FAILED: continuing...; fi; done
+scriptaddr=0xc4100000
+serial#=800F801C3530510438343532
+serverip=192.168.1.1
+soc=stm32mp
+splashimage=0xc4300000
+ubifs_boot=env exists bootubipart || env set bootubipart UBI; env exists bootubivol || env set bootubivol boot; if ubi part ${bootubipart} && ubifsmount ubi${devnum}:${bootubivol}; then devtype=ubi; run scan_dev_for_boot; fi
+usb_boot=usb start; if usb dev ${devnum}; then devtype=usb; run scan_dev_for_boot_part; fi
+vendor=st
+
+
+
+
+
+gst-launch-1.0 videotestsrc num-buffers=250 \
+ ! 'video/x-raw,format=(string)I420,width=320,height=240,framerate=(fraction)25/1' \
+ ! queue ! mux. \
+ audiotestsrc num-buffers=440 ! audioconvert \
+ ! 'audio/x-raw,rate=44100,channels=2' ! queue ! mux. \
+ avimux name=mux ! filesink location=test.avi
+
+gst-launch-1.0 v4l2src ! "video/x-raw, format=RGB16, width=640, height=480, framerate=(fraction)30/1" ! queue ! waylandsink fullscreen=true -e
+
+gst-launch-1.0 v4l2src ! "video/x-raw, format=RGB16, width=640, height=480, framerate=(fraction)30/1" ! queue ! videorate ! filesink location=test.avi -e	//可以运行
+
+gst-launch-1.0 videotestsrc ! "video/x-raw, format=RGB16, width=640, height=480, framerate=(fraction)30/1" ! queue ! videoconvert ! filesink location=test.avi -e 	//可以运行
+
+gst-launch-1.0 -e avimux name=mux1 ! filesink location=test.avi v4l2src device=/dev/video0 ! video/x-h264, framerate=30/1, width=640, height=360 ! queue ! mux1. alsasrc device=hw:1,0 ! audio/x-raw, rate=32000, channels=2, layout=interleaved, format=S16LE ! queue ! mux1.
+
+gst-launch-1.0 -e avimux name=mux1 ! filesink location=test.avi v4l2src device=/dev/video0 ! video/x-raw, format=RGB16, framerate=30/1, width=640, height=480 ! queue ! mux1. alsasrc device=hw:0,0 ! audio/x-raw, rate=48000, channels=2, layout=interleaved, format=S32LE ! queue ! mux1.
+
+
+gst-launch-1.0 videotestsrc ! autovideosink
+
+gst-launch-1.0 v4l2src device=/dev/video0  ! video/x-raw,format=RGB16,width=640,height=480,framerate=20/1  !  autovideosink	//可行
+gst-launch-1.0 v4l2src device=/dev/video0  ! video/x-raw,format=RGB16,width=640,height=480,framerate=20/1 ! filesink location=test.avi	//可行
+
+gst-launch-1.0 v4l2src device=/dev/video0  ! video/x-raw,width=640,height=480,framerate=20/1  ! avimux !  filesink location=test.avi	//ubuntu上可行
+
+gst-launch-1.0 v4l2src device=/dev/video0  ! video/x-raw,format=RGB16,width=640,height=480,framerate=20/1  ! videoconvert ! avimux !  filesink location=test.avi -e	//st135可行
+
+gst-play-1.0 playbin test.avi	//播放
+
+
+
+
+gst-launch-1.0 v4l2src device=/dev/video0  ! video/x-raw,width=640,height=480,framerate=20/1  ! avimux !  filesink location=test.avi
+
+gst-launch-1.0 v4l2src device=/dev/video0 ! 'video/x-raw,format=RGB16,width=640,height=480,framerate=20/1' ! ffmpegcolorspace ! ximagesink
+
+gst-launch-0.10 v4l2src !  video/x-raw-yuv,width=352,height=288 ! xvimagesink
+
+
+gst-launch-1.0 -e v4l2src ! "video/x-raw, format=RGB16, width=640, height=480, framerate=(fraction)30/1" ! teename=srctee srctee. ! queue2 name=squeue ! ffmpegcolorspace ! xvimagesink srctee. ! queue2 name=fqueue ! videorate ! ffmpegcolorspace ! ffenc_mpeg4 ! avimux ! filesink location=test.avi
+
+
+
+
+
+
+lr1110_bootloader_write_flash_encrypted( context, local_offset, buffer + loop * 64, min( remaining_length, 64 ) );
+	-> uint8_t cdata[256];
+	-> cbuffer[6];
+	-> lr1110_bootloader_fill_cbuffer_cdata_flash( cbuffer, cdata, 0x8003, offset, buffer + loop * 64, 64 );
+		-> lr1110_bootloader_fill_cbuffer_opcode_offset_flash( cbuffer, 0x8003, offset ); => cbuffer = 0x8003 + offset
+		-> lr1110_bootloader_fill_cdata_flash( cdata, buffer + loop * 64, 64 );	=> uint32_t 填充到 uint8_t
+
+
+openocd -f D:/WorkSoftware/STM32_ENV/openocd-0.10.0/scripts/interface/stlink-v2.cfg -f D:/WorkSoftware/STM32_ENV/openocd-0.10.0/scripts/target/stm32f0x.cfg -c init -c targets -c "reset halt" -c "flash write_image erase ./app.hex" -c "reset halt" -c "verify_image ./app.hex" -c "reset run" -c shutdown
+
+openocd -f interface/jlink.cfg -f target/stm32f0x.cfg  -c init -c targets -c "reset halt" -c "flash write_image erase FT32F0XX.hex" -c "reset halt" -c "verify_image FT32F0XX.hex" -c "reset run" -c shutdown
+
+openocd -f stm32f030_jlink.cfg -c init -c targets -c 'reset halt' -c 'flash write_image erase FT32F0XX.hex' -c 'reset halt' -c 'verify_image FT32F0XX.hex' -c 'reset run' -c shutdown
+
+
+this->demo_wifi_settings_default.channels              = DEMO_WIFI_CHANNELS_DEFAULT >> 1;
+this->demo_wifi_settings_default.types                 = DEMO_WIFI_TYPE_SCAN_DEFAULT;
+this->demo_wifi_settings_default.scan_mode             = DEMO_WIFI_MODE_DEFAULT;
+this->demo_wifi_settings_default.nbr_retrials          = DEMO_WIFI_NBR_RETRIALS_DEFAULT;	// 5
+this->demo_wifi_settings_default.max_results           = DEMO_WIFI_MAX_RESULTS_DEFAULT;		// 15
+this->demo_wifi_settings_default.timeout               = DEMO_WIFI_TIMEOUT_IN_MS_DEFAULT;	// 110
+this->demo_wifi_settings_default.result_type           = DEMO_WIFI_RESULT_TYPE_DEFAULT;
+this->demo_wifi_settings_default.does_abort_on_timeout = DEMO_WIFI_DOES_ABORT_ON_TIMEOUT_DEFAULT;
+
 

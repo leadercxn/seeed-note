@@ -85,6 +85,8 @@
     1. 增大磁盘的空间
         1. 处理 在虚拟机中把磁盘增大后，他不会把原磁盘直接增大，而是增大剩余空间，需要把剩余空间添加分区，后再挂载到文件系统中
         [在Linux下对未分配剩余空间分区挂载](https://blog.csdn.net/chiyanxi1706/article/details/100799682?utm_medium=distribute.pc_relevant_t0.none-task-blog-BlogCommendFromMachineLearnPai2-1.control&dist_request_id=1328603.58688.16151957706854447&depth_1-utm_source=distribute.pc_relevant_t0.none-task-blog-BlogCommendFromMachineLearnPai2-1.control)
+        2. 或者
+        [Linux下使用fdisk扩展分区容量](https://www.cnblogs.com/linuxprobe/p/5535223.html)
 
     2. 增大swap区的大小
         1. ubuntu系统线增大交换区大小的操作[链接](https://blog.csdn.net/m0_46537958/article/details/108469587)

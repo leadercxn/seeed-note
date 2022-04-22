@@ -32,9 +32,20 @@
                 sudo sgdisk --resize-table=128 -a 1 \
                             -n 1:34:545      -c 1:fsbl1   \
                             -n 2:546:1057    -c 2:fsbl2   \
-                            -n 3:1058:5153   -c 3:fip    \
-                            -n 4:5154:136225 -c 4:bootfs    \
+                            -n 3:1058:9249   -c 3:fip    \
+                            -n 4:9250:136225 -c 4:bootfs    \
                             -n 5:136226:     -c 5:rootfs  \
+                            -p /dev/sdb
+
+                # ST135
+                sudo sgdisk --resize-table=128 -a 1           \
+                            -n 1:34:545      -c 1:fsbl1       \
+                            -n 2:546:1057    -c 2:fsbl2       \
+                            -n 3:1058:9249   -c 3:fip         \
+                            -n 4:9250:140321 -c 4:bootfs      \
+                            -n 5:140322:173089 -c 5:vendorfs  \
+                            -n 6:173090:10658849  -c 6:rootfs  \
+                            -n 7:10658850:   -c 7:userfs \
                             -p /dev/sdb
 
                 # 设置BIOS的旧分区
@@ -42,11 +53,17 @@
 
                 # 查看设备所有分区的名字
                 sudo sgdisk -p /dev/sdb
+
+                # 查看文件分区
+                sudo fdisk -l sys.img
+
+                # 查看设备所有分区的文件系统类型
+                lsblk -f /dev/sdb
             ```
     3. 存入 u-boot-spl.stm32 或 tf-a-xxxx.stm32 、u-boot.img
             ```shell
-                sudo dd if=./u-boot/spl/u-boot-spl.stm32 of=$/dev/sdb1
-                sudo dd if=./u-boot/spl/u-boot-spl.stm32 of=$/dev/sdb2
+                sudo dd if=./u-boot/spl/u-boot-spl.stm32 of=/dev/sdb1
+                sudo dd if=./u-boot/spl/u-boot-spl.stm32 of=/dev/sdb2
                 sudo dd if=./u-boot/u-boot.img of=/dev/sdb3
             ```
     4. 分区格式处理
@@ -95,4 +112,52 @@
             sudo umount /media/boot
             sudo umount /media/rootfs
         ```
+
+
+# 制作 .img 镜像
+* 步骤
+    1. 新建文件
+        $ touch test.img
+    2. 生成空镜像
+        $ sudo dd if=/dev/zero of=test.img bs=1M count=8192
+    3. 擦出格式
+        $ sudo sgdisk -o test.img
+    4. 分区
+        $ sudo sgdisk --resize-table=128 -a 1           \
+                            -n 1:34:545      -c 1:fsbl1       \
+                            -n 2:546:1057    -c 2:fsbl2       \
+                            -n 3:1058:9249   -c 3:fip         \
+                            -n 4:9250:140321 -c 4:bootfs      \
+                            -n 5:140322:173089 -c 5:vendorfs  \
+                            -n 6:173090:10658849  -c 6:rootfs  \
+                            -n 7:10658850:   -c 7:userfs \
+                            -p test.img
+    5. 用来连接 img 镜像文件和 loopX回环设备
+        $ sudo losetup /dev/loop21 test.img
+    6. 挂载虚拟磁盘
+        $ sudo kpartx -av /dev/loop21
+        此时会有打印
+            add map loop21p1 (253:0): 0 512 linear 7:21 34
+            add map loop21p2 (253:1): 0 512 linear 7:21 546
+            add map loop21p3 (253:2): 0 8192 linear 7:21 1058
+            add map loop21p4 (253:3): 0 131072 linear 7:21 9250
+            add map loop21p5 (253:4): 0 32768 linear 7:21 140322
+            add map loop21p6 (253:5): 0 10485760 linear 7:21 173090
+            add map loop21p7 (253:6): 0 6118333 linear 7:21 10658850
+        对应的映射分区在
+            /dev/mapper/
+    7. 格式化分区
+        $ sudo mkfs.vfat -F 16 -n bootfs  /dev/mapper/loop21p4 
+            # sudo mkfs.fat  -n bootfs  /dev/mapper/loop21p4 
+            # sudo mkfs.ext4 -L bootfs  /dev/mapper/loop21p4
+        $ sudo mkfs.ext4 -L vendorfs  /dev/mapper/loop21p5
+        $ sudo mkfs.ext4 -L rootfs  /dev/mapper/loop21p6
+        $ sudo mkfs.ext4 -L userfs  /dev/mapper/loop21p7
+    8. 烧录镜像
+        $ sudo dd if=tf-a.stm32 of=/dev/mapper/loop21p1
+        ...
+    9. 卸载虚拟磁盘
+        $sudo kpartx -d test.img
+    10. 断开 img 镜像文件和 loopX回环设备
+        $sudo losetup -d /dev/loop21
 
